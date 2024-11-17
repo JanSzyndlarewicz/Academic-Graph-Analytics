@@ -19,7 +19,7 @@ class DatasetHandler:
         self.download_dataset_handler = DownloadStatusHandler(os.path.join(self.files_dir, CITATIONS_DATASET_LINKS_STATUS_FILE_NAME))
         os.makedirs(self.files_dir, exist_ok=True)
 
-    def handle_url_download(self, url: str):
+    def handle_url_download(self, url: str) -> str:
         citations_dir = os.path.join(self.files_dir, 'citations_dataset')
         os.makedirs(citations_dir, exist_ok=True)
         file_path = os.path.join(citations_dir, get_file_name_from_url(url))
@@ -28,6 +28,7 @@ class DatasetHandler:
         unpack_gz_file(file_path, file_path[:-3])
         os.remove(file_path)
         self.logger.info(f"File {file_path} has been downloaded")
+        return file_path[:-3]
 
     def prepare_new_database(self):
         response = self.api.get_links_for_dataset(self.release_date, self.dataset_name)

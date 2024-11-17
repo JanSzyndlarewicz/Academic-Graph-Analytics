@@ -1,0 +1,7 @@
+from config import SEMANTIC_SCHOLAR_CITATIONS_DATASET_NAME
+from data_retrival.semantic_scholar.download_dataset_handler import DatasetHandler
+
+database_handler = DatasetHandler(SEMANTIC_SCHOLAR_CITATIONS_DATASET_NAME)
+next_citations_dataset_link = database_handler.download_dataset_handler.get_next_url_to_download()
+authorized_citations_url = database_handler.get_authorized_url(next_citations_dataset_link)
+database_handler.handle_url_download(authorized_citations_url)

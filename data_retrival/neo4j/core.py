@@ -2,9 +2,10 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+
 from neo4j import GraphDatabase
 
-from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, NEO4J_BATCH_SIZE, NEO4J_MAX_WORKERS
+from config import NEO4J_BATCH_SIZE, NEO4J_MAX_WORKERS, NEO4J_PASSWORD, NEO4J_URI, NEO4J_USER
 
 
 class AbstractNeo4jBatchProcessor(ABC):
@@ -29,7 +30,7 @@ class AbstractNeo4jBatchProcessor(ABC):
         current_batch = []
         batch_count = 0
 
-        with open(json_file_path, 'r', encoding='utf-8') as f:
+        with open(json_file_path, "r", encoding="utf-8") as f:
             for line in f:
                 data = json.loads(line)
                 current_batch.append(data)
@@ -60,7 +61,7 @@ class AbstractNeo4jBatchProcessor(ABC):
 
     def _split_batch_into_sub_batches(self, batch):
         sub_batch_size = len(batch) // self.max_workers
-        return [batch[i:i + sub_batch_size] for i in range(0, len(batch), sub_batch_size)]
+        return [batch[i : i + sub_batch_size] for i in range(0, len(batch), sub_batch_size)]
 
     def _process_in_thread(self, sub_batch):
         with self.driver.session() as session:

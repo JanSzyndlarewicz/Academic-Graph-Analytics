@@ -4,7 +4,7 @@ import os
 
 import requests
 
-from config import SEMANTIC_SCHOLAR_HEADERS, SEMANTIC_SCHOLAR_BASE_URL, FILES_FOLDER_NAME
+from config import FILES_FOLDER_NAME, SEMANTIC_SCHOLAR_BASE_URL, SEMANTIC_SCHOLAR_HEADERS
 
 
 class ScholarAPI:
@@ -21,7 +21,7 @@ class ScholarAPI:
         response = requests.get(url, headers=self.headers)
         if response.status_code == 200:
             data = response.json()
-            with open(os.path.join(self.files_dir, 'releases.json'), 'w') as file:
+            with open(os.path.join(self.files_dir, "releases.json"), "w") as file:
                 json.dump(data, file, indent=4)
             return data
         else:
@@ -33,7 +33,7 @@ class ScholarAPI:
         response = requests.get(url, headers=self.headers)
         if response.status_code == 200:
             data = response.json()
-            with open(os.path.join(self.files_dir, 'datasets.json'), 'w') as file:
+            with open(os.path.join(self.files_dir, "datasets.json"), "w") as file:
                 json.dump(data, file, indent=4)
             return data
         else:
@@ -45,7 +45,7 @@ class ScholarAPI:
         response = requests.get(url, headers=self.headers)
         if response.status_code == 200:
             data = response.json()
-            with open(os.path.join(self.files_dir, 'links.json'), 'w') as file:
+            with open(os.path.join(self.files_dir, "links.json"), "w") as file:
                 json.dump(data, file, indent=4)
             return data
         else:

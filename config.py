@@ -1,16 +1,13 @@
 import logging
+import os
 
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
-SEMANTIC_SCHOLAR_API_KEY = os.getenv('SEMANTIC_SCHOLAR_API_KEY')
+SEMANTIC_SCHOLAR_API_KEY = os.getenv("SEMANTIC_SCHOLAR_API_KEY")
 
-SEMANTIC_SCHOLAR_HEADERS = {
-    'x-api-key': SEMANTIC_SCHOLAR_API_KEY,
-    'Accept': 'application/json'
-}
+SEMANTIC_SCHOLAR_HEADERS = {"x-api-key": SEMANTIC_SCHOLAR_API_KEY, "Accept": "application/json"}
 
 SEMANTIC_SCHOLAR_BASE_URL = "https://api.semanticscholar.org/datasets/v1/"
 SEMANTIC_SCHOLAR_DATASET_RELEASE_DATE = "2024-11-12"
@@ -22,13 +19,12 @@ FILES_FOLDER_NAME = "files"
 CITATIONS_DATASET_LINKS_STATUS_FILE_NAME = "citations_dataset_links_status.json"
 
 NEO4J_URI = "bolt://localhost:7687"
-NEO4J_USER = os.getenv('NEO4J_USER')
-NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD')
+NEO4J_USER = os.getenv("NEO4J_USER")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 NEO4J_BATCH_SIZE = 10
 NEO4J_MAX_WORKERS = 20
 
 # Logger configuration
-LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 logger = logging.getLogger(__name__)
-

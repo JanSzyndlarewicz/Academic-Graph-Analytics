@@ -1,12 +1,10 @@
 import logging
 import os
 
-from config import SEMANTIC_SCHOLAR_DATASET_RELEASE_DATE, FILES_FOLDER_NAME, \
-    CITATIONS_DATASET_LINKS_STATUS_FILE_NAME
+from config import CITATIONS_DATASET_LINKS_STATUS_FILE_NAME, FILES_FOLDER_NAME, SEMANTIC_SCHOLAR_DATASET_RELEASE_DATE
 from data_retrival.semantic_scholar.core import ScholarAPI
 from data_retrival.semantic_scholar.download_status_handler import DownloadStatusHandler
-from data_retrival.semantic_scholar.utils import find_full_url, get_file_name_from_url, download_file, \
-    unpack_gz_file
+from data_retrival.semantic_scholar.utils import download_file, find_full_url, get_file_name_from_url, unpack_gz_file
 
 
 class DatasetHandler:
@@ -16,11 +14,13 @@ class DatasetHandler:
         self.release_date = SEMANTIC_SCHOLAR_DATASET_RELEASE_DATE
         self.dataset_name = dataset_name
         self.files_dir = FILES_FOLDER_NAME
-        self.download_dataset_handler = DownloadStatusHandler(os.path.join(self.files_dir, CITATIONS_DATASET_LINKS_STATUS_FILE_NAME))
+        self.download_dataset_handler = DownloadStatusHandler(
+            os.path.join(self.files_dir, CITATIONS_DATASET_LINKS_STATUS_FILE_NAME)
+        )
         os.makedirs(self.files_dir, exist_ok=True)
 
     def handle_url_download(self, url: str) -> str:
-        citations_dir = os.path.join(self.files_dir, 'citations_dataset')
+        citations_dir = os.path.join(self.files_dir, self.dataset_name)
         os.makedirs(citations_dir, exist_ok=True)
         file_path = os.path.join(citations_dir, get_file_name_from_url(url))
         self.logger.info(f"Downloading file from {url}")

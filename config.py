@@ -21,8 +21,9 @@ CITATIONS_DATASET_LINKS_STATUS_FILE_NAME = "citations_dataset_links_status.json"
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = os.getenv("NEO4J_USER")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
-NEO4J_BATCH_SIZE = 10
-NEO4J_MAX_WORKERS = 20
+NEO4J_BATCH_SIZE = 100
+NEO4J_MAX_WORKERS = 16
+NEO4J_MAX_TRANSACTION_RETRY_TIME = 10
 
 # Logger configuration
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

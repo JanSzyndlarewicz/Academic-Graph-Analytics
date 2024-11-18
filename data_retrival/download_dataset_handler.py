@@ -2,8 +2,8 @@ import logging
 import os
 
 from config import CITATIONS_DATASET_LINKS_STATUS_FILE_NAME, FILES_FOLDER_NAME, SEMANTIC_SCHOLAR_DATASET_RELEASE_DATE
+from data_retrival.download_status_handler import DownloadStatusHandler
 from data_retrival.semantic_scholar.core import ScholarAPI
-from data_retrival.semantic_scholar.download_status_handler import DownloadStatusHandler
 from data_retrival.semantic_scholar.utils import download_file, find_full_url, get_file_name_from_url, unpack_gz_file
 
 

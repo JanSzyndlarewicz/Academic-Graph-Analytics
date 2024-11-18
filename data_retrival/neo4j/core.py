@@ -5,14 +5,23 @@ from concurrent.futures import ThreadPoolExecutor
 
 from neo4j import GraphDatabase
 
-from config import NEO4J_BATCH_SIZE, NEO4J_MAX_WORKERS, NEO4J_PASSWORD, NEO4J_URI, NEO4J_USER
+from config import (
+    NEO4J_BATCH_SIZE,
+    NEO4J_MAX_TRANSACTION_RETRY_TIME,
+    NEO4J_MAX_WORKERS,
+    NEO4J_PASSWORD,
+    NEO4J_URI,
+    NEO4J_USER,
+)
 
 
 class AbstractNeo4jBatchProcessor(ABC):
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        self.driver = GraphDatabase.driver(
+            NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD), max_transaction_retry_time=NEO4J_MAX_TRANSACTION_RETRY_TIME
+        )
         self.batch_size = NEO4J_BATCH_SIZE * NEO4J_MAX_WORKERS
         self.max_workers = NEO4J_MAX_WORKERS
         self.total_processed = 0
@@ -56,7 +65,7 @@ class AbstractNeo4jBatchProcessor(ABC):
                 future.result()
 
         self.total_processed += len(batch)
-        if self.total_processed % 10000 == 0:
+        if self.total_processed % 100000 == 0:
             self.logger.info(f"Processed {self.total_processed} rows so far.")
 
     def _split_batch_into_sub_batches(self, batch):

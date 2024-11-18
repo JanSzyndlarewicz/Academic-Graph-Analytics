@@ -11,9 +11,10 @@ def convert_citations_json_to_csv(input_file_path: str, output_file_path: str):
 
     row_counter = 0
 
-    with open(input_file_path, "r", encoding="utf-8") as input_file, open(
-        output_file_path, "w", encoding="utf-8"
-    ) as output_file:
+    with (
+        open(input_file_path, "r", encoding="utf-8") as input_file,
+        open(output_file_path, "w", encoding="utf-8") as output_file,
+    ):
 
         output_file.write("citingcorpusid,citedcorpusid,citationid,isinfluential\n")
 

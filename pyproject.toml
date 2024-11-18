@@ -1,0 +1,14 @@
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+skip-string-normalization = false
+
+[tool.isort]
+profile = "black"
+line_length = 120  # Match Black's line length
+known_first_party = ["Academic-Graph-Analytic"]  # Replace with your project name
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+combine_as_imports = true
+

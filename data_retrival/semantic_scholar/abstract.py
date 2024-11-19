@@ -4,7 +4,7 @@ import os
 
 import requests
 
-from config import FILES_FOLDER_NAME, SEMANTIC_SCHOLAR_BASE_URL, SEMANTIC_SCHOLAR_HEADERS
+from config import DATASETS_FOLDER_NAME, SEMANTIC_SCHOLAR_BASE_URL, SEMANTIC_SCHOLAR_HEADERS
 
 
 class APIClient:
@@ -12,7 +12,7 @@ class APIClient:
         self.logger = logging.getLogger(__name__)
         self.base_url = SEMANTIC_SCHOLAR_BASE_URL
         self.headers = SEMANTIC_SCHOLAR_HEADERS
-        self.files_dir = FILES_FOLDER_NAME
+        self.files_dir = DATASETS_FOLDER_NAME
         os.makedirs(self.files_dir, exist_ok=True)
 
     def fetch_data(self, endpoint: str, output_filename: str = None) -> dict:

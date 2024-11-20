@@ -33,7 +33,7 @@ class AbstractNeo4jBatchProcessor(ABC):
     def process_batch(self, tx, batch):
         raise NotImplementedError
 
-    def process_json(self, json_file_path):
+    def process_json(self, json_file_path: str) -> None:
         self.logger.info(f"Opening file: {json_file_path}")
 
         current_batch = []
@@ -55,7 +55,7 @@ class AbstractNeo4jBatchProcessor(ABC):
 
         self.logger.info(f"Processed {batch_count} batches and {self.total_processed} rows in total.")
 
-    def _process_batch(self, batch):
+    def _process_batch(self, batch: list) -> None:
         batches = self._split_batch_into_sub_batches(batch)
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -68,10 +68,10 @@ class AbstractNeo4jBatchProcessor(ABC):
         if self.total_processed % 100000 == 0:
             self.logger.info(f"Processed {self.total_processed} rows so far.")
 
-    def _split_batch_into_sub_batches(self, batch):
+    def _split_batch_into_sub_batches(self, batch: list) -> list:
         sub_batch_size = len(batch) // self.max_workers
         return [batch[i : i + sub_batch_size] for i in range(0, len(batch), sub_batch_size)]
 
-    def _process_in_thread(self, sub_batch):
+    def _process_in_thread(self, sub_batch: list) -> None:
         with self.driver.session() as session:
             session.execute_write(self.process_batch, sub_batch)

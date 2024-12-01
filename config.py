@@ -29,3 +29,5 @@ NEO4J_MAX_TRANSACTION_RETRY_TIME = 10
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 logger = logging.getLogger(__name__)
+
+

@@ -1,0 +1,1 @@
+from config import top_universities_by_country

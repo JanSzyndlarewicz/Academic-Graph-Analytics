@@ -1,6 +1,6 @@
 import json
-import jsonlines
 
+import jsonlines
 
 
 def test_field_presence(fields, file_path):

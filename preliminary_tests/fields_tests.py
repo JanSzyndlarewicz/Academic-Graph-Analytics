@@ -1,9 +1,11 @@
-from collections import Counter, defaultdict
 import json
-import re
-import jsonlines
 import os
+import re
+from collections import Counter, defaultdict
+
+import jsonlines
 import matplotlib.pyplot as plt
+
 
 def get_fields_occurances(path):
     fields = defaultdict(int)
@@ -13,6 +15,7 @@ def get_fields_occurances(path):
                 fields[key] += 1
     fields = sorted(fields.items(), key=lambda x: x[1], reverse=False)
     return fields
+
 
 def visualise_field_lengths_distribution(path, field="affiliation"):
     counts = defaultdict(int)
@@ -26,6 +29,7 @@ def visualise_field_lengths_distribution(path, field="affiliation"):
     plt.bar([str(x[0]) for x in counts], [x[1] for x in counts])
     plt.title(f"Distribution of {field} field lengths in {os.path.basename(path)}")
     plt.show()
+    
     
 def get_mean_difference_cover_cover_display_dates_years(path):
     differences = []
@@ -41,20 +45,25 @@ def get_mean_difference_cover_cover_display_dates_years(path):
                 
     return sum(differences) / len(differences)
 
-def visualise_field_value_distribution(path, field="prism:coverDate", show_every=20):
+
+def visualise_field_value_distribution(path, field="prism:coverDate", show_every=20, regex=None):
     with jsonlines.open(path) as papers:
-        counts = Counter([paper[field] for paper in papers if field in paper])
+        if regex:
+            counts = Counter([re.findall(regex, paper[field])[0] for paper in papers if field in paper and re.search(regex, paper[field])])
+        else:
+            counts = Counter([paper[field] for paper in papers if field in paper])
     counts = sorted(counts.items(), key=lambda x: x[0], reverse=False)
+    
     x_values = [str(x[0]) for x in counts]
     y_values = [x[1] for x in counts]
     
-    # Plot the bar chart
     plt.bar(x_values, y_values)
     
     plt.xticks(ticks=range(0, len(x_values), show_every), labels=x_values[::show_every], rotation=45)
     
     plt.title(f"Distribution of {field} field values in {os.path.basename(path)}")
     plt.show()
+    
     
 def visualise_affiliation_field_values_distribution(path, sub_field="affilname", show_every=20):
     counts = defaultdict(int)
@@ -82,6 +91,7 @@ def visualise_affiliation_field_values_distribution(path, sub_field="affilname",
     plt.title(f"Distribution of affiliation field values in {os.path.basename(path)}")
     plt.show()
     
+    
 def get_sample_field_values(path, field="affiliation", sample_size=10):
     values = []
     with jsonlines.open(path) as papers:
@@ -91,6 +101,7 @@ def get_sample_field_values(path, field="affiliation", sample_size=10):
             if len(values) > sample_size:
                 break
     return values
+
 
 def main():
     # print(get_fields_occurances(moscow_path))
@@ -103,7 +114,11 @@ def main():
         "affiliation-country"
         # "affiliation-city"
         )
-    visualise_affiliation_field_values_distribution(moscow_path, sub_field=sub_field, show_every=1)
+    # visualise_affiliation_field_values_distribution(moscow_path, sub_field=sub_field, show_every=1)
+    
+    # regex allows for aggregation of months
+    visualise_field_value_distribution(pwr_agriculture_path, regex=r"(?<=-)[^-\d]*\d{2}", show_every=1)
+
     
 
 if __name__ == "__main__":

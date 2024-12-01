@@ -1,11 +1,10 @@
-import jsonlines
 import json
-import requests
 import urllib.parse
 
+import jsonlines
+import requests
+
 from config import PAPER_SEARCH_URL, SAFETY_LIMIT, SCOPUS_KEY
-
-
 
 #Note on API parameters:
 #query - we can use:

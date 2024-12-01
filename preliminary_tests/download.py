@@ -2,6 +2,7 @@ import jsonlines
 import json
 import logging
 import os
+from pathlib import Path
 import requests
 import sys
 import urllib.parse
@@ -95,15 +96,40 @@ def save_all_entries(output_path, **params):
             logger.warning(f"Safety limit reached, query series aborted.")
             return
         
-def save_by_institutions_and_fields(institutions : list[str], fields : list[str], apiKey : str):
+def save_by_institutions_and_fields(institutions : list[str], fields : list[str], apiKey : str, country_mapping : dict = None):
     for institution in institutions:
-        for field in fields:
-            output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', f"{institution}-{field}.jsonl")
+        dir_path = Path(__file__).parent / "data"
+        if country_mapping is not None:
+            dir_path = dir_path / country_mapping.get(institution, "unknown")
+        if not dir_path.exists():
+            dir_path.mkdir()
+        for field in fields:           
+            output_path = dir_path / f"{institution}-{field}.jsonl"
             logger.info(f"Beginning data collection for institution {institution} and field {field}, output file: {output_path}")
             query = f"af-id({institution})"
             save_all_entries(output_path, query=query, subj=field, apiKey=apiKey)
 
+def read_unis_file(path, countries):
+    with open(path, "r") as file:
+        data = json.load(file)
+    institutions = []
+    country_mapping = {}
+    for entry in data:
+        if entry['country'] in countries:
+            institutions.append(entry['id'])
+            country_mapping[entry['id']] = entry['country']
+    return institutions, country_mapping
+
 if __name__ == "__main__":
-    fields = ["mult", "vete"]
-    institutions = ["60019987", "60008555"]
-    save_by_institutions_and_fields(institutions, fields, SCOPUS_KEY)
+
+    #DOWNLOAD DATA FOR UNIS FROM JSON
+    # countries = ["United States", "Russia"]
+    # institutions, country_mapping = read_unis_file("preliminary_tests\\best_affils_for_top_unis_01-17-42_transformed.json", countries)
+    # save_by_institutions_and_fields(institutions, ["econ"], SCOPUS_KEY, country_mapping=country_mapping)
+
+    #DOWNLAOD DATA FOR UNIS FROM LIST
+    # fields = ["mult", "vete"]
+    # institutions = ["60019987", "60008555"]
+    # country_mapping = {"60019987" : "Poland", "60008555" : "Poland"}
+    # save_by_institutions_and_fields(institutions, fields, SCOPUS_KEY, country_mapping)
+    pass

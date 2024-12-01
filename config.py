@@ -8,7 +8,9 @@ load_dotenv()
 # Semantic Scholar configuration
 SEMANTIC_SCHOLAR_API_KEY = os.getenv("SEMANTIC_SCHOLAR_API_KEY")
 SEMANTIC_SCHOLAR_HEADERS = {"x-api-key": SEMANTIC_SCHOLAR_API_KEY, "Accept": "application/json"}
-SEMANTIC_SCHOLAR_BASE_URL = "https://api.semanticscholar.org/datasets/v1/"
+SEMANTIC_SCHOLAR_BASE_URL = "https://api.semanticscholar.org/"
+SEMANTIC_SCHOLAR_DATASETS_BASE_URL = "datasets/v1/"
+SEMANTIC_SCHOLAR_PAPERS_BASE_URL = "graph/v1/paper/"
 SEMANTIC_SCHOLAR_DATASET_RELEASE_DATE = "2024-11-12"
 SEMANTIC_SCHOLAR_CITATIONS_DATASET_NAME = "citations"
 SEMANTIC_SCHOLAR_PAPER_IDS_DATASET_NAME = "paper-ids"

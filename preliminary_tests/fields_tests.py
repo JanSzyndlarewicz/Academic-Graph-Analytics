@@ -59,7 +59,7 @@ def visualise_field_value_distribution(path, field="prism:coverDate", show_every
     
     plt.bar(x_values, y_values)
     
-    plt.xticks(ticks=range(0, len(x_values), show_every), labels=x_values[::show_every], rotation=45)
+    plt.xticks(ticks=range(0, len(x_values), show_every), labels=x_values[::show_every], rotation=90)
     
     plt.title(f"Distribution of {field} field values in {os.path.basename(path)}")
     plt.show()
@@ -108,7 +108,7 @@ def main():
     # print(get_sample_field_values(moscow_path))
     # visualise_field_length_distribution(pwr_agriculture_path)
     # print(get_mean_difference_cover_cover_display_dates_years(moscow_path))
-    # visualise_field_value_distribution(moscow_path)
+    visualise_field_value_distribution(moscow_path, regex=r"^.{4}", field="prism:coverDate", show_every=1)
     sub_field = (
         # "affilname" 
         "affiliation-country"
@@ -117,7 +117,7 @@ def main():
     # visualise_affiliation_field_values_distribution(moscow_path, sub_field=sub_field, show_every=1)
     
     # regex allows for aggregation of months
-    visualise_field_value_distribution(pwr_agriculture_path, regex=r"(?<=-)[^-\d]*\d{2}", show_every=1)
+    # visualise_field_value_distribution(pwr_agriculture_path, regex=r"(?<=-)[^-\d]*\d{2}", show_every=1)
 
     
 

@@ -11,3 +11,6 @@
 /files
 /data
 /.env
+/.venv
+/venv
+/.vscode

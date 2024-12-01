@@ -3,14 +3,14 @@ import os
 
 from config import DATA_FOLDER_NAME, SEMANTIC_SCHOLAR_DATASET_RELEASE_DATE
 from data_retrival.download_status_handler import DownloadStatusHandler
-from data_retrival.semantic_scholar.datasets_handler import DatasetsScholarAPI
+from data_retrival.semantic_scholar.core import ScholarAPI
 from data_retrival.utils import download_file, find_full_url, get_base_url, get_file_name_from_url, unpack_gz_file
 
 
 class DatasetHandler:
     def __init__(self, dataset_name: str):
         self.logger = logging.getLogger(__name__)
-        self.api = DatasetsScholarAPI()
+        self.api = ScholarAPI()
         self.release_date = SEMANTIC_SCHOLAR_DATASET_RELEASE_DATE
         self.dataset_name = dataset_name
         self.download_dataset_handler = DownloadStatusHandler(

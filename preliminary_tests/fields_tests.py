@@ -30,7 +30,6 @@ def visualise_field_lengths_distribution(path, field="affiliation"):
     plt.title(f"Distribution of {field} field lengths in {os.path.basename(path)}")
     plt.show()
 
-
 def get_mean_difference_cover_cover_display_dates_years(path):
     differences = []
     with jsonlines.open(path) as papers:
@@ -46,10 +45,15 @@ def get_mean_difference_cover_cover_display_dates_years(path):
     return sum(differences) / len(differences)
 
 
-def visualise_field_value_distribution(path, field="prism:coverDate", show_every=20):
+
+def visualise_field_value_distribution(path, field="prism:coverDate", show_every=20, regex=None):
     with jsonlines.open(path) as papers:
-        counts = Counter([paper[field] for paper in papers if field in paper])
+        if regex:
+            counts = Counter([re.findall(regex, paper[field])[0] for paper in papers if field in paper and re.search(regex, paper[field])])
+        else:
+            counts = Counter([paper[field] for paper in papers if field in paper])
     counts = sorted(counts.items(), key=lambda x: x[0], reverse=False)
+    
     x_values = [str(x[0]) for x in counts]
     y_values = [x[1] for x in counts]
 
@@ -60,7 +64,6 @@ def visualise_field_value_distribution(path, field="prism:coverDate", show_every
 
     plt.title(f"Distribution of {field} field values in {os.path.basename(path)}")
     plt.show()
-
 
 def visualise_affiliation_field_values_distribution(path, sub_field="affilname", show_every=20):
     counts = defaultdict(int)
@@ -88,7 +91,6 @@ def visualise_affiliation_field_values_distribution(path, sub_field="affilname",
     plt.title(f"Distribution of affiliation field values in {os.path.basename(path)}")
     plt.show()
 
-
 def get_sample_field_values(path, field="affiliation", sample_size=10):
     values = []
     with jsonlines.open(path) as papers:
@@ -105,13 +107,14 @@ def main():
     # print(get_sample_field_values(moscow_path))
     # visualise_field_length_distribution(pwr_agriculture_path)
     # print(get_mean_difference_cover_cover_display_dates_years(moscow_path))
-    # visualise_field_value_distribution(moscow_path)
+    visualise_field_value_distribution(moscow_path, regex=r"^.{4}", field="prism:coverDate", show_every=1)
     sub_field = (
         # "affilname"
         "affiliation-country"
         # "affiliation-city"
-    )
+      
     visualise_affiliation_field_values_distribution(moscow_path, sub_field=sub_field, show_every=1)
+
 
 
 if __name__ == "__main__":

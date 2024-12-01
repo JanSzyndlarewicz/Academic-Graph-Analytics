@@ -1,5 +1,4 @@
 import gzip
-import json
 import shutil
 from urllib.parse import urlparse
 
@@ -33,15 +32,3 @@ def download_file(url: str, file_path: str) -> None:
     response = requests.get(url)
     with open(file_path, "wb") as file:
         file.write(response.content)
-
-
-def process_json_lines(file_path):
-    with open(file_path, "r", encoding="utf-8") as file:
-        for line in file:
-            yield json.loads(line)
-
-
-def save_to_json_lines(data, filename):
-    with open(filename, "a", encoding="utf-8") as f:
-        for paper in data:
-            f.write(json.dumps(paper, ensure_ascii=False) + "\n")

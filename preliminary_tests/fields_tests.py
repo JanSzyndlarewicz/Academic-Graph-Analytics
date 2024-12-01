@@ -29,21 +29,21 @@ def visualise_field_lengths_distribution(path, field="affiliation"):
     plt.bar([str(x[0]) for x in counts], [x[1] for x in counts])
     plt.title(f"Distribution of {field} field lengths in {os.path.basename(path)}")
     plt.show()
-    
-    
+
 def get_mean_difference_cover_cover_display_dates_years(path):
     differences = []
     with jsonlines.open(path) as papers:
         for paper in papers:
             if "prism:coverDate" in paper and "prism:coverDisplayDate" in paper:
                 try:
-                    cover_date_year = int(re.findall(r'\d{4}', paper["prism:coverDate"])[0])
-                    cover_display_date_year = int(re.findall(r'\d{4}', paper["prism:coverDisplayDate"])[0])
+                    cover_date_year = int(re.findall(r"\d{4}", paper["prism:coverDate"])[0])
+                    cover_display_date_year = int(re.findall(r"\d{4}", paper["prism:coverDisplayDate"])[0])
                     differences.append(cover_date_year - cover_display_date_year)
                 except:
                     print(paper["prism:coverDate"], paper["prism:coverDisplayDate"], "could not be parsed")
-                
+
     return sum(differences) / len(differences)
+
 
 
 def visualise_field_value_distribution(path, field="prism:coverDate", show_every=20, regex=None):
@@ -56,15 +56,15 @@ def visualise_field_value_distribution(path, field="prism:coverDate", show_every
     
     x_values = [str(x[0]) for x in counts]
     y_values = [x[1] for x in counts]
-    
+
+    # Plot the bar chart
     plt.bar(x_values, y_values)
-    
-    plt.xticks(ticks=range(0, len(x_values), show_every), labels=x_values[::show_every], rotation=90)
-    
+
+    plt.xticks(ticks=range(0, len(x_values), show_every), labels=x_values[::show_every], rotation=45)
+
     plt.title(f"Distribution of {field} field values in {os.path.basename(path)}")
     plt.show()
-    
-    
+
 def visualise_affiliation_field_values_distribution(path, sub_field="affilname", show_every=20):
     counts = defaultdict(int)
     with jsonlines.open(path) as papers:
@@ -75,23 +75,22 @@ def visualise_affiliation_field_values_distribution(path, sub_field="affilname",
                         counts[value[sub_field]] += 1
                 else:
                     counts[paper["affiliation"][sub_field]] += 1
-        
-    if 'Russian Federation' in counts:
-        del counts['Russian Federation']
+
+    if "Russian Federation" in counts:
+        del counts["Russian Federation"]
     counts = sorted(counts.items(), key=str, reverse=False)
-    
+
     x_values = [str(x[0]) for x in counts]
     y_values = [x[1] for x in counts]
-    
+
     # Plot the bar chart
     plt.bar(x_values, y_values)
-    
+
     plt.xticks(ticks=range(0, len(x_values), show_every), labels=x_values[::show_every], rotation=90)
-    
+
     plt.title(f"Distribution of affiliation field values in {os.path.basename(path)}")
     plt.show()
-    
-    
+
 def get_sample_field_values(path, field="affiliation", sample_size=10):
     values = []
     with jsonlines.open(path) as papers:
@@ -110,16 +109,13 @@ def main():
     # print(get_mean_difference_cover_cover_display_dates_years(moscow_path))
     visualise_field_value_distribution(moscow_path, regex=r"^.{4}", field="prism:coverDate", show_every=1)
     sub_field = (
-        # "affilname" 
+        # "affilname"
         "affiliation-country"
         # "affiliation-city"
-        )
-    # visualise_affiliation_field_values_distribution(moscow_path, sub_field=sub_field, show_every=1)
-    
-    # regex allows for aggregation of months
-    # visualise_field_value_distribution(pwr_agriculture_path, regex=r"(?<=-)[^-\d]*\d{2}", show_every=1)
+      
+    visualise_affiliation_field_values_distribution(moscow_path, sub_field=sub_field, show_every=1)
 
-    
+
 
 if __name__ == "__main__":
     # por que no esta funcionando el path?

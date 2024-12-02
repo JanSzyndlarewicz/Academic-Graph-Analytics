@@ -1,5 +1,6 @@
 import gzip
 import json
+import os
 import shutil
 from urllib.parse import urlparse
 
@@ -42,6 +43,28 @@ def process_json_lines(file_path):
 
 
 def save_to_json_lines(data, filename):
+    with open(filename, "w", encoding="utf-8") as f:
+        for paper in data:
+            f.write(json.dumps(paper, ensure_ascii=False) + "\n")
+
+
+def append_to_json_lines(data, filename):
     with open(filename, "a", encoding="utf-8") as f:
         for paper in data:
             f.write(json.dumps(paper, ensure_ascii=False) + "\n")
+
+
+def get_all_files_paths_recursively(folder_path: str) -> list[str]:
+    file_paths = []
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            file_paths.append(os.path.join(root, file))
+    return file_paths
+
+
+def merge_json_lines_files(files: list[str], output_file: str) -> None:
+    with open(output_file, "a", encoding="utf-8") as f:
+        for file in files:
+            with open(file, "r", encoding="utf-8") as file:
+                for line in file:
+                    f.write(line)

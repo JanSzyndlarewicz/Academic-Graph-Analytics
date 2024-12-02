@@ -3,7 +3,7 @@ import os
 
 from config import DATA_FOLDER_NAME, SEMANTIC_SCHOLAR_DATASET_RELEASE_DATE
 from data_retrival.download_status_handler import DownloadStatusHandler
-from data_retrival.semantic_scholar.datasets_handler import DatasetsScholarAPI
+from data_retrival.semantic_scholar.detasets_handler import DatasetsScholarAPI
 from data_retrival.utils import download_file, find_full_url, get_base_url, get_file_name_from_url, unpack_gz_file
 
 

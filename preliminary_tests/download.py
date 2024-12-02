@@ -96,24 +96,30 @@ def save_all_entries(output_path, **params):
             logger.warning(f"Safety limit reached, query series aborted.")
             return
         
-def save_by_institutions_and_fields(institutions : list[str], fields : list[str], apiKey : str, country_mapping : dict = None):
-    for institution in institutions:
+def save_by_institutions_and_fields(institutions : list[str], fields : list[str], apiKey : str, country_mapping : dict[str,str] = None, institution_names : list[str] = None):
+    
+    if institution_names is None or len(institutions) != len(institution_names):
+        institution_names = institutions
+    else:
+        institution_names = [f"{id} ({name})" for id,name in zip(institutions,institution_names)]
+    
+    for id,name in zip(institutions,institution_names):
         dir_path = Path(__file__).parent / "data"
         if country_mapping is not None:
-            dir_path = dir_path / country_mapping.get(institution, "unknown")
+            dir_path = dir_path / country_mapping.get(id, "unknown")
         if not dir_path.exists():
             dir_path.mkdir()
         for field in fields:           
-            output_path = dir_path / f"{institution}-{field}.jsonl"
+            output_path = dir_path / f"{id}-{field}.jsonl"
             if not output_path.exists():
-                logger.info(f"Beginning data collection for institution {institution} and field {field}, output file: {output_path}")
-                query = f"af-id({institution})"
+                logger.info(f"Beginning data collection for institution {name} and field {field}, output file: {output_path}")
+                query = f"af-id({id})"
                 save_all_entries(output_path, query=query, subj=field, apiKey=apiKey)
             else:
-                logger.info(f"Data for institution {institution} and field {field}, output file: {output_path} already exists; skipping")
+                logger.info(f"Data for institution {name} and field {field}, output file: {output_path} already exists; skipping")
 
 
-def read_unis_file_group_by_countries(path, n=None):
+def read_unis_file_group_by_countries(path, n=None) -> dict:
     with open(path, "r") as file:
         data = json.load(file)
     country_uni_dict = {}
@@ -126,21 +132,14 @@ def read_unis_file_group_by_countries(path, n=None):
             country_uni_dict[country] = country_uni_dict[country][:n] if len(country_uni_dict[country]) >= n else country_uni_dict[country]
     return country_uni_dict
 
-def transform_country_uni_dict_to_list_and_mapping(country_uni_dict):
+def process_entries(country_uni_dict) -> tuple[list[str], list[str], dict[str,str]]:
     institutions = [x['id'] for xs in country_uni_dict.values() for x in xs]
+    names = [x['name'] for xs in country_uni_dict.values() for x in xs]
     mapping = {}
     for country,unis in country_uni_dict.items():
         for uni in unis:
             mapping[uni['id']] = country
-    return institutions, mapping
-
-def get_ids_and_names_of_top_institutions_in_countries(country_uni_dict, n):
-    for country in country_uni_dict:
-        country_uni_dict[country] = country_uni_dict[country][:n] if len(country_uni_dict[country]) >= n else country_uni_dict[country]
-    institutions = [x for xs in country_uni_dict.values() for x in xs]
-    ids = [entry['id'] for entry in institutions]
-    names = [entry['name'] for entry in institutions]
-    return ids, names
+    return institutions, names, mapping
 
 def generate_numbers_of_records_report(output_path : Path, institutions : list[str], fields : list[str], institution_names : list[str] = None):
     if institution_names is None:
@@ -178,20 +177,18 @@ def generate_numbers_of_records_report(output_path : Path, institutions : list[s
             file.write(f"Total : {count} \n")
             file.write("\n")
         
-
+def exclude_countries(country_uni_dict : dict, countries_to_exclude : list[str]) -> dict:
+    for country in countries_to_exclude:
+        del country_uni_dict[country]
 
 
 if __name__ == "__main__":
 
     fields = ["econ"]
     unis = read_unis_file_group_by_countries("preliminary_tests/best_affils_for_top_unis_01-17-42_transformed.json", n=3)
-    institutions, mapping = transform_country_uni_dict_to_list_and_mapping(unis)
+    institutions, names, mapping = process_entries(unis)
 
-    print(institutions)
-    print(mapping)
-    print(len(institutions))
-    
-    #save_by_institutions_and_fields(institutions, fields , SCOPUS_KEY, mapping)
+    save_by_institutions_and_fields(institutions, fields , SCOPUS_KEY, country_mapping=mapping, institution_names=names)
 
     # number_of_records_file_path = Path(__file__).parent / "data" / "test_report.txt"
     # generate_numbers_of_records_report(number_of_records_file_path, institutions, fields, names)

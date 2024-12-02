@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 
 logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s]  %(message)s")
 
-fileHandler = logging.FileHandler("download.log")
+fileHandler = logging.FileHandler("download.log", encoding="utf-8")
 fileHandler.setFormatter(logFormatter)
 logger.addHandler(fileHandler)
 
@@ -105,31 +105,96 @@ def save_by_institutions_and_fields(institutions : list[str], fields : list[str]
             dir_path.mkdir()
         for field in fields:           
             output_path = dir_path / f"{institution}-{field}.jsonl"
-            logger.info(f"Beginning data collection for institution {institution} and field {field}, output file: {output_path}")
-            query = f"af-id({institution})"
-            save_all_entries(output_path, query=query, subj=field, apiKey=apiKey)
+            if not output_path.exists():
+                logger.info(f"Beginning data collection for institution {institution} and field {field}, output file: {output_path}")
+                query = f"af-id({institution})"
+                save_all_entries(output_path, query=query, subj=field, apiKey=apiKey)
+            else:
+                logger.info(f"Data for institution {institution} and field {field}, output file: {output_path} already exists; skipping")
 
-def read_unis_file(path, countries):
+
+def read_unis_file_group_by_countries(path, n=None):
     with open(path, "r") as file:
         data = json.load(file)
-    institutions = []
-    country_mapping = {}
+    country_uni_dict = {}
     for entry in data:
-        if entry['country'] in countries:
-            institutions.append(entry['id'])
-            country_mapping[entry['id']] = entry['country']
-    return institutions, country_mapping
+        country = entry['country']
+        if country not in country_uni_dict: country_uni_dict[country] = []
+        country_uni_dict[country].append(entry)
+    if n is not None:
+        for country in country_uni_dict:
+            country_uni_dict[country] = country_uni_dict[country][:n] if len(country_uni_dict[country]) >= n else country_uni_dict[country]
+    return country_uni_dict
+
+def transform_country_uni_dict_to_list_and_mapping(country_uni_dict):
+    institutions = [x['id'] for xs in country_uni_dict.values() for x in xs]
+    mapping = {}
+    for country,unis in country_uni_dict.items():
+        for uni in unis:
+            mapping[uni['id']] = country
+    return institutions, mapping
+
+def get_ids_and_names_of_top_institutions_in_countries(country_uni_dict, n):
+    for country in country_uni_dict:
+        country_uni_dict[country] = country_uni_dict[country][:n] if len(country_uni_dict[country]) >= n else country_uni_dict[country]
+    institutions = [x for xs in country_uni_dict.values() for x in xs]
+    ids = [entry['id'] for entry in institutions]
+    names = [entry['name'] for entry in institutions]
+    return ids, names
+
+def generate_numbers_of_records_report(output_path : Path, institutions : list[str], fields : list[str], institution_names : list[str] = None):
+    if institution_names is None:
+        institution_descs = institutions
+    else:
+        if len(institutions) != len(institution_names):
+            raise ValueError("Institutions different length than institution_names")
+        institution_descs = [f"{id} ({name})" for id, name in zip(institutions,institution_names)]
+
+    params = {
+        "count" : "1",
+        "httpAccept" : "application/json",
+        "apiKey" : SCOPUS_KEY
+    }
+
+    logger.info(f"Beginning number of entries query, institutions={institution_descs}, fields={fields}")
+
+    with open(output_path, "a", encoding="utf-8") as file:
+        for field in fields:
+            params["subj"] = field
+            count = 0
+            file.write(f"Field: {field} \n")
+            for id, desc in zip(institutions, institution_descs):
+                logger.info(f"Beginning number of entries check for institution {desc} and field {field}")
+                params["query"] = f"af-id({id})"
+                url = PAPER_SEARCH_URL + "?" + urllib.parse.urlencode(params)
+                jres = get_from_api(url)
+                try:
+                    number_of_entries = int(jres['search-results']['opensearch:totalResults'])
+                    count += number_of_entries
+                except:
+                    logger.warning(f"Failed to get number of entries for institution {desc}, field {field}")
+                    number_of_entries = "unknown"
+                file.write(f"{desc} : {number_of_entries} \n")
+            file.write(f"Total : {count} \n")
+            file.write("\n")
+        
+
+
 
 if __name__ == "__main__":
 
-    #DOWNLOAD DATA FOR UNIS FROM JSON
-    # countries = ["United States", "Russia"]
-    # institutions, country_mapping = read_unis_file("preliminary_tests\\best_affils_for_top_unis_01-17-42_transformed.json", countries)
-    # save_by_institutions_and_fields(institutions, ["econ"], SCOPUS_KEY, country_mapping=country_mapping)
+    fields = ["econ"]
+    unis = read_unis_file_group_by_countries("preliminary_tests/best_affils_for_top_unis_01-17-42_transformed.json", n=3)
+    institutions, mapping = transform_country_uni_dict_to_list_and_mapping(unis)
 
-    #DOWNLAOD DATA FOR UNIS FROM LIST
-    # fields = ["mult", "vete"]
-    # institutions = ["60019987", "60008555"]
-    # country_mapping = {"60019987" : "Poland", "60008555" : "Poland"}
-    # save_by_institutions_and_fields(institutions, fields, SCOPUS_KEY, country_mapping)
+    print(institutions)
+    print(mapping)
+    print(len(institutions))
+    
+    #save_by_institutions_and_fields(institutions, fields , SCOPUS_KEY, mapping)
+
+    # number_of_records_file_path = Path(__file__).parent / "data" / "test_report.txt"
+    # generate_numbers_of_records_report(number_of_records_file_path, institutions, fields, names)
     pass
+
+

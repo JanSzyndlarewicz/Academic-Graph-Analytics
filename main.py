@@ -1,145 +1,159 @@
 import json
-from collections import Counter
-
-import matplotlib.pyplot as plt
+import os
 
 from data_retrival.neo4j.scholar_citations import SemanticScholarCitationsBatchProcessor
-from data_retrival.neo4j.semantic_scholar_papers import SemanticScholarPapersBatchProcessor
+from data_retrival.neo4j.semantic_scholar_papers import ScopusPapersBatchProcessor
 from data_retrival.semantic_scholar.papers_handler import process_and_save_chunks
 from data_retrival.utils import (
     get_all_files_paths_recursively,
-    merge_json_lines_files,
     process_json_lines,
     save_to_json_lines,
+    get_file_with_parent_folder,
 )
+
 
 ### --> In progress <-- ###
 # Playground #
 
+def download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path):
+    dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
+
+    chunk_size = 500
+
+    for path in dataset_paths:
+        json_iterator = process_json_lines(path)
+        file_name = get_file_with_parent_folder(path)
+        full_path = os.path.join(scholar_citations_dataset_path, file_name)
+        process_and_save_chunks(json_iterator, chunk_size, full_path)
+
+
+def assign_countries_to_papers(scopus_papers_dataset_path):
+    dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
+
+    for paths in dataset_paths:
+        country = os.path.basename(os.path.dirname(paths))
+        papers = []
+        for paper in process_json_lines(paths):
+            paper["country"] = country
+            papers.append(paper)
+        save_to_json_lines(papers, paths)
+
+def assign_fields_to_papers(scopus_papers_dataset_path, field):
+    dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
+
+    for paths in dataset_paths:
+        papers = []
+        for paper in process_json_lines(paths):
+            paper["field"] = field
+            paper["DOI"] = paper.get("prism:doi")
+            paper["countries"] = list(
+                {affiliation.get("affiliation-country") for affiliation in paper.get("affiliation", []) if
+                 affiliation.get("affiliation-country")})
+            paper["publication_date"] = paper.get("prism:coverDate")
+            paper["universities"] = list(
+                {affiliation.get("affilname") for affiliation in paper.get("affiliation", []) if
+                 affiliation.get("affilname")})
+            paper["cities"] = list(
+                {affiliation.get("affiliation-city") for affiliation in paper.get("affiliation", []) if
+                 affiliation.get("affiliation-city")})
+            papers.append(paper)
+        save_to_json_lines(papers, paths)
+
+
+def upload_papers_to_neo4j(scopus_papers_dataset_path):
+    scopus_papers_batch_processor = ScopusPapersBatchProcessor()
+
+    dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
+
+    for path in dataset_paths:
+        scopus_papers_batch_processor.process_file(path)
+
+    scopus_papers_batch_processor.close()
+
+
+def prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, output_dir="data/unique_citations", chunk_size=10000):
+    all_dois = set()
+
+    scopus_papers_dataset_paths = [
+        path for path in get_all_files_paths_recursively(scopus_papers_dataset_path)
+        if not os.path.exists(path.replace('.jsonl', '.not_found.jsonl'))
+    ]
+
+    for path in scopus_papers_dataset_paths:
+        for paper in process_json_lines(path):
+            try:
+                all_dois.add(paper["DOI"])
+            except (KeyError, TypeError):
+                print(paper)
+
+    dataset_paths = get_all_files_paths_recursively(scholar_citations_dataset_path)
+
+    citations = []
+    all_citations = []
+    for path in dataset_paths:
+        for paper in process_json_lines(path):
+            try:
+                if paper["DOI"] in all_dois:
+                    for citation in paper["citations"]:
+                        all_citations.append(citation)
+                        if citation and citation in all_dois:
+                            citations.append({"base": paper["DOI"], "resource": citation})
+            except (KeyError, TypeError):
+                print(paper)
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    for i in range(0, len(citations), chunk_size):
+        chunk = citations[i:i + chunk_size]
+        file_path = os.path.join(output_dir, f"citations_{i // chunk_size + 1}.jsonl")
+        with open(file_path, 'w') as f:
+            for citation in chunk:
+                f.write(json.dumps(citation) + "\n")
+
+
+def upload_citations_to_neo4j(citations_dataset_path):
+    scholar_citations_batch_processor = SemanticScholarCitationsBatchProcessor()
+
+    dataset_paths = get_all_files_paths_recursively(citations_dataset_path)
+
+    for path in dataset_paths:
+        scholar_citations_batch_processor.process_file(path)
+
+    scholar_citations_batch_processor.close()
+
 
 def main():
-    # dataset_paths = get_all_files_paths_recursively("data/initial_econ_set")
-    # merge_json_lines_files(dataset_paths, "data/initial_econ_set.jsonl")
-    #
-    # json_iterator = process_json_lines("data/initial_econ_set.jsonl")
-    # chunk_size = 500
-    # process_and_save_chunks(json_iterator, chunk_size, "data/initial_econ_set-citations.jsonl")
+    """
+    Before running the script you may want to play with the values for the NEO4J_MAX_WORKERS in config.py.
+    The default value is 1, but you can increase it to speed up the process, it shouldnt be higher that
+    the number of threads your CPU can handle. There are some errors while making it in parallel, so you want
+    to make sure that the data is uploaded correctly to the neo4j database keeping the number of workers to 1.
+    The whole process of uploading the data to neo4j can take a few hours ~4 hours in one worker mode.
+    So just run it through the night and you should be fine.
+    In case of any errors there is one thing that can be done, and it will fix the problem. You just have to ...
+    """
 
-    # # Load the papers and assign countries
-    # paper_countries = {}
-    # for paper in process_json_lines("data/initial_econ_set.jsonl"):
-    #     if "affiliation" in paper:
-    #         for affiliation in paper["affiliation"]:
-    #             country = affiliation.get("affiliation-country")
-    #             if country:
-    #                 paper_countries[paper.get("prism:doi")] = country
-    #                 break
-    #
-    # # Count citations per country
-    # country_citations = Counter()
-    # for paper in process_json_lines("data/initial_econ_set-citations.jsonl"):
-    #     if paper["citations"]:
-    #         for citation in paper["citations"]:
-    #             if citation and citation in paper_countries:
-    #                 country_citations[paper_countries[citation]] += 1
-    #
-    # # Plot the distribution
-    # plt.figure(figsize=(12, 8))
-    # plt.bar(country_citations.keys(), country_citations.values(), edgecolor='black')
-    # plt.xticks(rotation=90)
-    # plt.title('Number of Citations for Different Countries')
-    # plt.xlabel('Country')
-    # plt.ylabel('Number of Citations')
-    # plt.show()
+    # Those links should fit the paths of the datasets taken from our google drive
+    scopus_papers_dataset_path = "data/econ_data_top3/"
+    scholar_citations_dataset_path = "data/scholar_citations/"
+    unique_citations_path = "data/unique_citations/"
+    field = "economics"
 
-    # PAPERS UPLOAD
-    # processed_papers = []
-    # for paper in process_json_lines("data/initial_econ_set.jsonl"):
-    #     affiliations = paper.get("affiliation")
-    #     if affiliations:
-    #         affiliations = [affiliation.get("affiliation-country") for affiliation in affiliations if
-    #                         affiliation.get("affiliation-country")]
-    #     else:
-    #         affiliations = []
-    #
-    #     processed_papers.append({
-    #         "DOI": paper.get("prism:doi"),
-    #         "affiliations": affiliations,
-    #         "publication_date": paper.get("prism:coverDate"),
-    #         # TODO Add study field
-    #     })
-    #
-    # save_to_json_lines(processed_papers, "data/initial_econ_set_preprocessed.jsonl")
-    #
-    #
-    # file_path = r"data/initial_econ_set_preprocessed.jsonl"
-    # citations_batch_processor = SemanticScholarPapersBatchProcessor()
-    # citations_batch_processor.process_file(file_path)
-    # citations_batch_processor.close()
+    # Part to skip once you have the data from our google drive
+    download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path)
 
-    unique_doi_in_papers = set()
-    for paper in process_json_lines("data/initial_econ_set_preprocessed.jsonl"):
-        unique_doi_in_papers.add(paper["DOI"])
+    # Adding additional information to the papers
+    assign_fields_to_papers(scopus_papers_dataset_path, field)
 
-    processed_citations = []
-    for paper in process_json_lines("data/initial_econ_set-citations.jsonl"):
-        if paper["citations"]:
-            citations = [citation for citation in paper["citations"] if citation in unique_doi_in_papers]
-            if citations:
-                processed_citations.append(
-                    {
-                        "DOI": paper.get("DOI"),
-                        "citations": citations,
-                    }
-                )
+    # Uploading the papers to neo4j
+    upload_papers_to_neo4j(scopus_papers_dataset_path)
 
-    save_to_json_lines(processed_citations, "data/initial_econ_set_citations_preprocessed.jsonl")
+    # Creating a file with unique citations that are only between papers in our dataset
+    # We dont want to have citations to papers that are not in our dataset
+    prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
 
-    file_path = r"data/initial_econ_set_citations_preprocessed.jsonl"
-    citations_batch_processor = SemanticScholarCitationsBatchProcessor()
-    citations_batch_processor.process_file(file_path)
-    citations_batch_processor.close()
-
+    # Uploading the unique citations to neo4j
+    upload_citations_to_neo4j(unique_citations_path)
 
 if __name__ == "__main__":
     main()
-
-    # AWAITING STABLE CODEBASE
-    # parser = make_a_parser()
-    # args = parser.parse_args()
-    # if args.command == "get-links":
-    #     database_handler = DatasetHandler(SEMANTIC_SCHOLAR_CITATIONS_DATASET_NAME)
-    #     database_handler.prepare_new_database()
-    # elif args.command == "get-batches":
-    #     database_handler = DatasetHandler(SEMANTIC_SCHOLAR_CITATIONS_DATASET_NAME)
-    #     next_citations_dataset_link = database_handler.download_dataset_handler.get_next_url_to_download()
-    #     authorized_citations_url = database_handler.get_authorized_url(next_citations_dataset_link)
-    #     file_path = database_handler.pull_batch_from_url(authorized_citations_url)
-    #     database_handler.download_dataset_handler.set_url_as_downloaded(next_citations_dataset_link)
-    # elif args.command == "process-batches":
-    #     database_handler = DatasetHandler(SEMANTIC_SCHOLAR_CITATIONS_DATASET_NAME)
-    #     next_citations_dataset_link = database_handler.download_dataset_handler.get_next_url_to_download()
-    #     authorized_citations_url = database_handler.get_authorized_url(next_citations_dataset_link)
-    #     file_path = database_handler.pull_batch_from_url(authorized_citations_url)
-    #     database_handler.download_dataset_handler.set_url_as_downloaded(next_citations_dataset_link)
-    #     convert_citations_json_to_csv(file_path, file_path + ".csv")
-    # elif args.command == "build-graph":
-    #     if args.graph_command == "papers":
-    #         pass
-    #     elif args.graph_command == "authors":
-    #         pass
-    #
-    # # database_handler = DatasetHandler(SEMANTIC_SCHOLAR_CITATIONS_DATASET_NAME)
-    # database_handler = DatasetHandler(SEMANTIC_SCHOLAR_PAPERS_DATASET_NAME)
-    #
-    # database_handler.prepare_new_database()
-    #
-    # next_citations_dataset_link = database_handler.download_dataset_handler.get_next_url_to_download()
-    # authorized_citations_url = database_handler.get_authorized_url(next_citations_dataset_link)
-    # file_path = database_handler.pull_batch_from_url(authorized_citations_url)
-    # # # file_path = r"files\citations_dataset\20241115_081922_00277_4pq6k_04f68738-4009-48e5-abfc-0253ad2b8a25"
-    # # # citations_batch_processor = CitationBatchProcessor()
-    # # # citations_batch_processor.process_json(file_path)
-    # # # citations_batch_processor.close()
-    # database_handler.download_dataset_handler.set_url_as_downloaded(next_citations_dataset_link)
-    # # convert_citations_json_to_csv(file_path, file_path + ".csv")

@@ -1,18 +1,25 @@
 from data_retrival.neo4j.core import AbstractNeo4jBatchProcessor
 
 
-class SemanticScholarPapersBatchProcessor(AbstractNeo4jBatchProcessor):
+class ScopusPapersBatchProcessor(AbstractNeo4jBatchProcessor):
 
     def process_batch(self, tx, batch):
         for data in batch:
             if data.get("DOI"):
                 tx.run(
                     """
-                    MERGE (paper:Paper {DOI: $doi})
-                    SET paper.affiliations = $affiliations,
-                        paper.publication_date = $publication_date
-                """,
+                    MERGE (paper:Paper {id: $doi})
+                    SET paper.publication_date = $publication_date,
+                        paper.countries = $countries,
+                        paper.universities = $universities,
+                        paper.cities = $cities,
+                        paper.field = $field
+                    """,
                     doi=data["DOI"],
-                    affiliations=data["affiliations"],
-                    publication_date=data["publication_date"],
+                    publication_date=data.get("publication_date"),
+                    countries=data.get("countries", []),
+                    universities=data.get("universities", []),
+                    cities=data.get("cities", []),
+                    field=data.get("field", "Unknown"),
                 )
+        #print("Batch processed successfully")

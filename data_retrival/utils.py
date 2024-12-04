@@ -43,6 +43,7 @@ def process_json_lines(file_path):
 
 
 def save_to_json_lines(data, filename):
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, "w", encoding="utf-8") as f:
         for paper in data:
             f.write(json.dumps(paper, ensure_ascii=False) + "\n")
@@ -68,3 +69,17 @@ def merge_json_lines_files(files: list[str], output_file: str) -> None:
             with open(file, "r", encoding="utf-8") as file:
                 for line in file:
                     f.write(line)
+
+
+def find_all_folders(base_path):
+    folders = []
+    for root, dirs, files in os.walk(base_path):
+        for dir_name in dirs:
+            folders.append(os.path.join(root, dir_name))
+    return folders
+
+
+def get_file_with_parent_folder(path):
+    file_name = os.path.basename(path)
+    parent_folder = os.path.basename(os.path.dirname(path))
+    return f"{parent_folder}/{file_name}"

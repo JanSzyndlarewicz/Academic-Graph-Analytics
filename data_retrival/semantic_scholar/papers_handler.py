@@ -38,6 +38,7 @@ def process_and_save_chunks(json_iterator, chunk_size, filename):
             chunk.append(doi)
             if len(chunk) == chunk_size:
                 papers_dict, not_found = fetch_papers_by_dois(chunk, fields=["citations.externalIds", "externalIds"])
+
                 save_to_json_lines(papers_dict, filename)
 
                 if not_found:
@@ -46,6 +47,7 @@ def process_and_save_chunks(json_iterator, chunk_size, filename):
                 chunk = []
     if chunk:
         papers_dict, not_found = fetch_papers_by_dois(chunk, fields=["citations.externalIds", "externalIds"])
+
         save_to_json_lines(papers_dict, filename)
         if not_found:
             save_to_json_lines(not_found, papers_not_found_path)

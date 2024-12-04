@@ -22,4 +22,4 @@ class ScopusPapersBatchProcessor(AbstractNeo4jBatchProcessor):
                     cities=data.get("cities", []),
                     field=data.get("field", "Unknown"),
                 )
-        #print("Batch processed successfully")
+

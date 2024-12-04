@@ -70,6 +70,7 @@ def merge_json_lines_files(files: list[str], output_file: str) -> None:
                 for line in file:
                     f.write(line)
 
+
 def find_all_folders(base_path):
     folders = []
     for root, dirs, files in os.walk(base_path):

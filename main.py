@@ -183,14 +183,14 @@ def main():
     # download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path)
     #
     # Adding additional information to the papers
-    assign_fields_to_papers(scopus_papers_dataset_path, field)
+    #assign_fields_to_papers(scopus_papers_dataset_path, field)
     #
     # Uploading the papers to neo4j
-    upload_papers_to_neo4j(scopus_papers_dataset_path)
+    #upload_papers_to_neo4j(scopus_papers_dataset_path)
     #
     # Creating a file with unique citations that are only between papers in our dataset
     # We dont want to have citations to papers that are not in our dataset
-    prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
+    #prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
     #
     # Uploading the unique citations to neo4j
     upload_citations_to_neo4j(unique_citations_path)

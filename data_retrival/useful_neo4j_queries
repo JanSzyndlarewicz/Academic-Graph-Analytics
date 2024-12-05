@@ -53,4 +53,7 @@ ORDER BY TotalConnections DESC
 
 -----------------------------------------------
 
-
+Get edges originating from nodes within a given timespan
+MATCH (a:Paper)-[e]->(b:Paper)
+WHERE DATE(a.publication_date) < DATE("2022-01-01") AND DATE(a.publication_date) > DATE("2021-01-01")
+RETURN e

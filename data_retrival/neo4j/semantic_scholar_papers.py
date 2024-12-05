@@ -15,13 +15,11 @@ class ScopusPapersBatchProcessor(AbstractNeo4jBatchProcessor):
                     SET paper.publication_date = COALESCE($publication_date, paper.publication_date),
                         paper.countries = COALESCE($countries, paper.countries),
                         paper.universities = COALESCE($universities, paper.universities),
-                        paper.cities = COALESCE($cities, paper.cities),
                         paper.field = COALESCE($field, paper.field)
                     """,
                     doi=data["DOI"],
                     publication_date=data.get("publication_date"),
                     countries=data.get("countries", []),
                     universities=data.get("universities", []),
-                    cities=data.get("cities", []),
                     field=data.get("field", "Unknown"),
                 )

@@ -3,7 +3,7 @@ import json
 from semanticscholar import SemanticScholar
 
 from config import SEMANTIC_SCHOLAR_API_KEY
-from data_retrival.utils import process_json_lines, save_to_json_lines
+from data_retrival.utils import append_to_json_lines
 
 # Initialize the Semantic Scholar API client
 ss_api = SemanticScholar(api_key=SEMANTIC_SCHOLAR_API_KEY)
@@ -39,18 +39,18 @@ def process_and_save_chunks(json_iterator, chunk_size, filename):
             if len(chunk) == chunk_size:
                 papers_dict, not_found = fetch_papers_by_dois(chunk, fields=["citations.externalIds", "externalIds"])
 
-                save_to_json_lines(papers_dict, filename)
+                append_to_json_lines(papers_dict, filename)
 
                 if not_found:
-                    save_to_json_lines(not_found, papers_not_found_path)
+                    append_to_json_lines(not_found, papers_not_found_path)
 
                 chunk = []
     if chunk:
         papers_dict, not_found = fetch_papers_by_dois(chunk, fields=["citations.externalIds", "externalIds"])
 
-        save_to_json_lines(papers_dict, filename)
+        append_to_json_lines(papers_dict, filename)
         if not_found:
-            save_to_json_lines(not_found, papers_not_found_path)
+            append_to_json_lines(not_found, papers_not_found_path)
 
 
 def count_citations(file_path):
@@ -63,17 +63,3 @@ def count_citations(file_path):
                 papers_counter += 1
                 citations_counter.extend([citation for citation in paper["citations"] if citation])
     return len(citations_counter), papers_counter
-
-
-# Main script execution
-if __name__ == "__main__":
-    input_file = "60021331-econ-batch.jsonl"
-    output_file = "papers_batch.jsonl"
-    chunk_size = 500
-
-    json_iterator = process_json_lines(input_file)
-    process_and_save_chunks(json_iterator, chunk_size, output_file)
-
-    total_citations, total_papers_with_citations = count_citations(output_file)
-    print(f"Total citations: {total_citations}")
-    print(f"Papers with citations: {total_papers_with_citations}")

@@ -5,15 +5,18 @@ class ScopusPapersBatchProcessor(AbstractNeo4jBatchProcessor):
 
     def process_batch(self, tx, batch):
         for data in batch:
-            if data.get("DOI"):
+            doi = data.get("DOI")
+            if not doi:
+                continue
+            if "DOI" in data:
                 tx.run(
                     """
                     MERGE (paper:Paper {id: $doi})
-                    SET paper.publication_date = $publication_date,
-                        paper.countries = $countries,
-                        paper.universities = $universities,
-                        paper.cities = $cities,
-                        paper.field = $field
+                    SET paper.publication_date = COALESCE($publication_date, paper.publication_date),
+                        paper.countries = COALESCE($countries, paper.countries),
+                        paper.universities = COALESCE($universities, paper.universities),
+                        paper.cities = COALESCE($cities, paper.cities),
+                        paper.field = COALESCE($field, paper.field)
                     """,
                     doi=data["DOI"],
                     publication_date=data.get("publication_date"),
@@ -22,4 +25,5 @@ class ScopusPapersBatchProcessor(AbstractNeo4jBatchProcessor):
                     cities=data.get("cities", []),
                     field=data.get("field", "Unknown"),
                 )
+
 

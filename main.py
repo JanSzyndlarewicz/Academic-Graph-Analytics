@@ -1,5 +1,5 @@
-import json
 import os
+import re
 
 from data_retrival.neo4j.scholar_citations import SemanticScholarCitationsBatchProcessor
 from data_retrival.neo4j.semantic_scholar_papers import ScopusPapersBatchProcessor
@@ -8,7 +8,7 @@ from data_retrival.utils import (
     get_all_files_paths_recursively,
     process_json_lines,
     save_to_json_lines,
-    get_file_with_parent_folder,
+    get_file_with_parent_folder, load_dataset_mapping, save_citations_to_files,
 )
 
 
@@ -38,26 +38,43 @@ def assign_countries_to_papers(scopus_papers_dataset_path):
             papers.append(paper)
         save_to_json_lines(papers, paths)
 
-def assign_fields_to_papers(scopus_papers_dataset_path, field):
-    dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
 
-    for paths in dataset_paths:
-        papers = []
-        for paper in process_json_lines(paths):
-            paper["field"] = field
-            paper["DOI"] = paper.get("prism:doi")
-            paper["countries"] = list(
-                {affiliation.get("affiliation-country") for affiliation in paper.get("affiliation", []) if
-                 affiliation.get("affiliation-country")})
-            paper["publication_date"] = paper.get("prism:coverDate")
-            paper["universities"] = list(
-                {affiliation.get("affilname") for affiliation in paper.get("affiliation", []) if
-                 affiliation.get("affilname")})
-            paper["cities"] = list(
-                {affiliation.get("affiliation-city") for affiliation in paper.get("affiliation", []) if
-                 affiliation.get("affiliation-city")})
-            papers.append(paper)
-        save_to_json_lines(papers, paths)
+def extract_university_info(file_name, dataset_mapping):
+    match = re.match(r"(\d+)-econ\.jsonl", file_name)
+    university_id = match.group(1) if match else "Unknown"
+    university_name = dataset_mapping.get(university_id, "Unknown")
+    return university_id, university_name
+
+
+def process_papers_in_file(file_path, field, dataset_mapping):
+    country = os.path.basename(os.path.dirname(file_path))
+    file_name = os.path.basename(file_path).split('_')[0]
+    _, university_name = extract_university_info(file_name, dataset_mapping)
+
+    papers = []
+    for paper in process_json_lines(file_path):
+        enriched_paper = enrich_paper_data(paper, field, country, university_name)
+        papers.append(enriched_paper)
+    save_to_json_lines(papers, file_path)
+
+
+def enrich_paper_data(paper, field, country, university):
+    return {
+        "field": field,
+        "DOI": paper.get("prism:doi"),
+        "countries": [country],
+        "publication_date": paper.get("prism:coverDate"),
+        "universities": [university],
+        **paper
+    }
+
+
+def assign_fields_to_papers(scopus_papers_dataset_path, field, mapping_file_path='data/dataset_mapping.txt'):
+    dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
+    dataset_mapping = load_dataset_mapping(mapping_file_path)
+
+    for path in dataset_paths:
+        process_papers_in_file(path, field, dataset_mapping)
 
 
 def upload_papers_to_neo4j(scopus_papers_dataset_path):
@@ -71,45 +88,56 @@ def upload_papers_to_neo4j(scopus_papers_dataset_path):
     scopus_papers_batch_processor.close()
 
 
-def prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, output_dir="data/unique_citations", chunk_size=10000):
+def load_dois_from_scopus(scopus_papers_dataset_paths):
     all_dois = set()
-
-    scopus_papers_dataset_paths = [
-        path for path in get_all_files_paths_recursively(scopus_papers_dataset_path)
-        if not os.path.exists(path.replace('.jsonl', '.not_found.jsonl'))
-    ]
-
     for path in scopus_papers_dataset_paths:
         for paper in process_json_lines(path):
             try:
                 all_dois.add(paper["DOI"])
             except (KeyError, TypeError):
-                print(paper)
+                print(f"Error processing paper: {paper}")
+    return all_dois
 
-    dataset_paths = get_all_files_paths_recursively(scholar_citations_dataset_path)
 
-    citations = []
+def load_citations_from_scholar(scholar_citations_dataset_paths, all_dois):
+    citations_among_dataset = []
     all_citations = []
-    for path in dataset_paths:
+
+    for path in scholar_citations_dataset_paths:
         for paper in process_json_lines(path):
             try:
                 if paper["DOI"] in all_dois:
                     for citation in paper["citations"]:
                         all_citations.append(citation)
                         if citation and citation in all_dois:
-                            citations.append({"base": paper["DOI"], "resource": citation})
+                            citations_among_dataset.append({"base": paper["DOI"], "resource": citation})
             except (KeyError, TypeError):
-                print(paper)
+                print(f"Error processing paper: {paper}")
 
-    os.makedirs(output_dir, exist_ok=True)
+    return all_citations, citations_among_dataset
 
-    for i in range(0, len(citations), chunk_size):
-        chunk = citations[i:i + chunk_size]
-        file_path = os.path.join(output_dir, f"citations_{i // chunk_size + 1}.jsonl")
-        with open(file_path, 'w') as f:
-            for citation in chunk:
-                f.write(json.dumps(citation) + "\n")
 
+
+def prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path,
+                                     output_dir="data/unique_citations", chunk_size=10000):
+    scopus_papers_dataset_paths = [
+        path for path in get_all_files_paths_recursively(scopus_papers_dataset_path)
+        if not os.path.exists(path.replace('.jsonl', '.not_found.jsonl'))
+    ]
+
+    # Load DOIs from Scopus dataset
+    all_dois = load_dois_from_scopus(scopus_papers_dataset_paths)
+
+    # Load citations from Scholar dataset
+    scholar_citations_dataset_paths = [
+        path for path in get_all_files_paths_recursively(scholar_citations_dataset_path)
+        if os.path.exists(path.replace('.jsonl', '.not_found.jsonl'))
+    ]
+
+    all_citations, citations_among_dataset = load_citations_from_scholar(scholar_citations_dataset_paths, all_dois)
+
+    # Save the citations to JSONL files
+    save_citations_to_files(citations_among_dataset, output_dir, chunk_size)
 
 def upload_citations_to_neo4j(citations_dataset_path):
     scholar_citations_batch_processor = SemanticScholarCitationsBatchProcessor()
@@ -140,20 +168,21 @@ def main():
     field = "economics"
 
     # Part to skip once you have the data from our google drive
-    download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path)
-
+    # download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path)
+    #
     # Adding additional information to the papers
     assign_fields_to_papers(scopus_papers_dataset_path, field)
-
+    #
     # Uploading the papers to neo4j
     upload_papers_to_neo4j(scopus_papers_dataset_path)
-
-    # Creating a file with unique citations that are only between papers in our dataset
-    # We dont want to have citations to papers that are not in our dataset
+    #
+    # # Creating a file with unique citations that are only between papers in our dataset
+    # # We dont want to have citations to papers that are not in our dataset
     prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
-
+    #
     # Uploading the unique citations to neo4j
     upload_citations_to_neo4j(unique_citations_path)
+
 
 if __name__ == "__main__":
     main()

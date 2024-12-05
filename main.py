@@ -8,12 +8,15 @@ from data_retrival.utils import (
     get_all_files_paths_recursively,
     process_json_lines,
     save_to_json_lines,
-    get_file_with_parent_folder, load_dataset_mapping, save_citations_to_files,
+    get_file_with_parent_folder,
+    load_dataset_mapping,
+    save_citations_to_files,
 )
 
 
 ### --> In progress <-- ###
 # Playground #
+
 
 def download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path):
     dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
@@ -48,7 +51,7 @@ def extract_university_info(file_name, dataset_mapping):
 
 def process_papers_in_file(file_path, field, dataset_mapping):
     country = os.path.basename(os.path.dirname(file_path))
-    file_name = os.path.basename(file_path).split('_')[0]
+    file_name = os.path.basename(file_path).split("_")[0]
     _, university_name = extract_university_info(file_name, dataset_mapping)
 
     papers = []
@@ -65,11 +68,11 @@ def enrich_paper_data(paper, field, country, university):
         "countries": [country],
         "publication_date": paper.get("prism:coverDate"),
         "universities": [university],
-        **paper
+        **paper,
     }
 
 
-def assign_fields_to_papers(scopus_papers_dataset_path, field, mapping_file_path='data/dataset_mapping.txt'):
+def assign_fields_to_papers(scopus_papers_dataset_path, field, mapping_file_path="data/dataset_mapping.txt"):
     dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
     dataset_mapping = load_dataset_mapping(mapping_file_path)
 
@@ -117,12 +120,13 @@ def load_citations_from_scholar(scholar_citations_dataset_paths, all_dois):
     return all_citations, citations_among_dataset
 
 
-
-def prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path,
-                                     output_dir="data/unique_citations", chunk_size=10000):
+def prepare_unique_citations_dataset(
+    scopus_papers_dataset_path, scholar_citations_dataset_path, output_dir="data/unique_citations", chunk_size=10000
+):
     scopus_papers_dataset_paths = [
-        path for path in get_all_files_paths_recursively(scopus_papers_dataset_path)
-        if not os.path.exists(path.replace('.jsonl', '.not_found.jsonl'))
+        path
+        for path in get_all_files_paths_recursively(scopus_papers_dataset_path)
+        if not os.path.exists(path.replace(".jsonl", ".not_found.jsonl"))
     ]
 
     # Load DOIs from Scopus dataset
@@ -130,14 +134,16 @@ def prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citatio
 
     # Load citations from Scholar dataset
     scholar_citations_dataset_paths = [
-        path for path in get_all_files_paths_recursively(scholar_citations_dataset_path)
-        if os.path.exists(path.replace('.jsonl', '.not_found.jsonl'))
+        path
+        for path in get_all_files_paths_recursively(scholar_citations_dataset_path)
+        if os.path.exists(path.replace(".jsonl", ".not_found.jsonl"))
     ]
 
     all_citations, citations_among_dataset = load_citations_from_scholar(scholar_citations_dataset_paths, all_dois)
 
     # Save the citations to JSONL files
     save_citations_to_files(citations_among_dataset, output_dir, chunk_size)
+
 
 def upload_citations_to_neo4j(citations_dataset_path):
     scholar_citations_batch_processor = SemanticScholarCitationsBatchProcessor()

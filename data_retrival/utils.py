@@ -89,17 +89,18 @@ def get_file_with_parent_folder(path):
 
 def load_dataset_mapping(mapping_file_path):
     dataset_mapping = {}
-    with open(mapping_file_path, 'r', encoding='utf-8') as f:
+    with open(mapping_file_path, "r", encoding="utf-8") as f:
         for line in f:
-            if line.strip() and not line.startswith('Total'):
-                parts = line.split(':')
+            if line.strip() and not line.startswith("Total"):
+                parts = line.split(":")
                 if len(parts) == 2:
                     university_info, _ = parts
-                    if '(' in university_info:
-                        university_id, university_name = university_info.split('(', 1)
-                        university_name = university_name.rstrip(') ')
+                    if "(" in university_info:
+                        university_id, university_name = university_info.split("(", 1)
+                        university_name = university_name.rstrip(") ")
                         dataset_mapping[university_id.strip()] = university_name.strip()
     return dataset_mapping
+
 
 def save_citations_to_files(citations_among_dataset, output_dir, chunk_size):
     os.makedirs(output_dir, exist_ok=True)
@@ -108,8 +109,8 @@ def save_citations_to_files(citations_among_dataset, output_dir, chunk_size):
     random.shuffle(citations_among_dataset)
 
     for i in range(0, len(citations_among_dataset), chunk_size):
-        chunk = citations_among_dataset[i:i + chunk_size]
+        chunk = citations_among_dataset[i : i + chunk_size]
         file_path = os.path.join(output_dir, f"citations_{i // chunk_size + 1}.jsonl")
-        with open(file_path, 'w') as f:
+        with open(file_path, "w") as f:
             for citation in chunk:
                 f.write(json.dumps(citation) + "\n")

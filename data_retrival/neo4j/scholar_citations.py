@@ -11,8 +11,9 @@ class SemanticScholarCitationsBatchProcessor(AbstractNeo4jBatchProcessor):
 
                 base_result = tx.run("MATCH (base:Paper {id: $base_doi}) RETURN base", base_doi=base_doi)
                 if base_result.single():
-                    cited_result = tx.run("MATCH (cited:Paper {id: $citation_doi}) RETURN cited",
-                                          citation_doi=citation_doi)
+                    cited_result = tx.run(
+                        "MATCH (cited:Paper {id: $citation_doi}) RETURN cited", citation_doi=citation_doi
+                    )
                     if cited_result.single():
                         tx.run(
                             """
@@ -23,4 +24,3 @@ class SemanticScholarCitationsBatchProcessor(AbstractNeo4jBatchProcessor):
                             base_doi=base_doi,
                             citation_doi=citation_doi,
                         )
-

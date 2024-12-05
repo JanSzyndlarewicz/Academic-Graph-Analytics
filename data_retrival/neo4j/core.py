@@ -33,27 +33,47 @@ class AbstractNeo4jBatchProcessor(ABC):
     def process_batch(self, tx, batch):
         raise NotImplementedError
 
-    def process_json(self, json_file_path: str) -> None:
-        self.logger.info(f"Opening file: {json_file_path}")
+    def process_file(self, file_path: str, file_format: str = "jsonl") -> None:
+        self.logger.info(f"Opening file: {file_path} in {file_format} format")
 
         current_batch = []
         batch_count = 0
 
-        with open(json_file_path, "r", encoding="utf-8") as f:
-            for line in f:
-                data = json.loads(line)
-                current_batch.append(data)
+        # Define the reader based on file format
+        if file_format == "json":
+            reader = self._json_reader(file_path)
+        elif file_format == "jsonl":
+            reader = self._jsonlines_reader(file_path)
+        else:
+            raise ValueError(f"Unsupported file format: {file_format}")
 
-                if len(current_batch) >= self.batch_size:
-                    self._process_batch(current_batch)
-                    batch_count += 1
-                    current_batch.clear()
+        # Process the file in batches
+        for data in reader:
+            current_batch.append(data)
 
-            if current_batch:
+            if len(current_batch) >= self.batch_size:
                 self._process_batch(current_batch)
                 batch_count += 1
+                current_batch.clear()
+
+        # Process any remaining data
+        if current_batch:
+            self._process_batch(current_batch)
+            batch_count += 1
 
         self.logger.info(f"Processed {batch_count} batches and {self.total_processed} rows in total.")
+
+    def _json_reader(self, file_path: str):
+        with open(file_path, "r", encoding="utf-8") as f:
+            for line in f:
+                yield json.loads(line)
+
+    def _jsonlines_reader(self, file_path: str):
+        import jsonlines
+
+        with jsonlines.open(file_path, "r") as reader:
+            for data in reader:
+                yield data
 
     def _process_batch(self, batch: list) -> None:
         batches = self._split_batch_into_sub_batches(batch)
@@ -65,12 +85,12 @@ class AbstractNeo4jBatchProcessor(ABC):
                 future.result()
 
         self.total_processed += len(batch)
-        if self.total_processed % 100000 == 0:
+        if self.total_processed % 1000 == 0:
             self.logger.info(f"Processed {self.total_processed} rows so far.")
 
     def _split_batch_into_sub_batches(self, batch: list) -> list:
-        sub_batch_size = len(batch) // self.max_workers
-        return [batch[i : i + sub_batch_size] for i in range(0, len(batch), sub_batch_size)]
+        sub_batch_size = max(1, len(batch) // self.max_workers)
+        return [batch[i: i + sub_batch_size] for i in range(0, len(batch), sub_batch_size)]
 
     def _process_in_thread(self, sub_batch: list) -> None:
         with self.driver.session() as session:

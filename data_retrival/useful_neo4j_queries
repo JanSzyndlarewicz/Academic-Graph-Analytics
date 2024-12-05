@@ -1,0 +1,59 @@
+Index papers by doi (named as 'id' in out graph)
+CREATE INDEX FOR (p:Paper) ON (p.id)
+
+-----------------------------------------------
+
+Delete all nodes
+MATCH (n) DETACH DELETE n
+
+-----------------------------------------------
+
+Delete only relationships
+MATCH ()-[r]->()
+DELETE r
+
+-----------------------------------------------
+
+Delete all nodes and relationships
+MATCH (n) DETACH DELETE n
+
+-----------------------------------------------
+
+Creating graph of countries
+
+MATCH (base:Paper)-[:CITES]->(cited:Paper)
+WITH base.countries AS base_countries, cited.countries AS cited_countries
+UNWIND base_countries AS base_country
+UNWIND cited_countries AS cited_country
+WITH base_country, cited_country, COUNT(*) AS citation_count
+RETURN base_country, cited_country, citation_count
+ORDER BY citation_count DESC
+
+MATCH (base:Paper)-[:CITES]->(cited:Paper)
+WITH base.countries AS base_countries, cited.countries AS cited_countries
+UNWIND base_countries AS base_country
+UNWIND cited_countries AS cited_country
+MERGE (bc:Country {name: base_country})
+MERGE (cc:Country {name: cited_country})
+MERGE (bc)-[r:CITED_BY]->(cc)
+ON CREATE SET r.weight = 1
+ON MATCH SET r.weight = r.weight + 1
+
+-----------------------------------------------
+
+Counting total connections between countries
+
+MATCH (c:Country)-[r_out:CITED_BY]->()
+WITH c, SUM(r_out.weight) AS outgoing_weight
+MATCH (c)<-[r_in:CITED_BY]-()
+WITH c, outgoing_weight, SUM(r_in.weight) AS incoming_weight
+SET c.total_connections = COALESCE(outgoing_weight, 0) + COALESCE(incoming_weight, 0)
+RETURN c.name AS Country, c.total_connections AS TotalConnections
+ORDER BY TotalConnections DESC
+
+-----------------------------------------------
+
+Get edges originating from nodes within a given timespan
+MATCH (a:Paper)-[e]->(b:Paper)
+WHERE DATE(a.publication_date) < DATE("2022-01-01") AND DATE(a.publication_date) > DATE("2021-01-01")
+RETURN e

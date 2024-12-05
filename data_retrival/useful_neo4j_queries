@@ -1,0 +1,13 @@
+Index papers by doi (named as 'id' in out graph)
+CREATE INDEX FOR (p:Paper) ON (p.id)
+
+Delete all nodes
+MATCH (n) DETACH DELETE n
+
+Delete only relationships
+MATCH ()-[r]->()
+DELETE r
+
+Delete all nodes and relationships
+MATCH (n) DETACH DELETE n
+

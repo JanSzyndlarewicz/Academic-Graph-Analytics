@@ -166,6 +166,12 @@ def main():
     So just run it through the night and you should be fine.
     In case of any errors there is one thing that can be done, and it will fix the problem. You just have to ...
     """
+    """
+    FYI, I did all the graph processing un 12 workers and batch size of 10, and it took me around 10 minutes overall.
+    But before running the citations part I recommend to index the papers by DOI, it will speed up the process.
+    Just open Neo4j browser and run the following query: CREATE INDEX FOR (p:Paper) ON (p.id)
+    Once you will have some interesting queries you can place them in useful_neo4j_queries.txt.
+    """
 
     # Those links should fit the paths of the datasets taken from our google drive
     scopus_papers_dataset_path = "data/econ_data_top3/"
@@ -182,8 +188,8 @@ def main():
     # Uploading the papers to neo4j
     upload_papers_to_neo4j(scopus_papers_dataset_path)
     #
-    # # Creating a file with unique citations that are only between papers in our dataset
-    # # We dont want to have citations to papers that are not in our dataset
+    # Creating a file with unique citations that are only between papers in our dataset
+    # We dont want to have citations to papers that are not in our dataset
     prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
     #
     # Uploading the unique citations to neo4j

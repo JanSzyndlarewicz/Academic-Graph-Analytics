@@ -89,8 +89,8 @@ class AbstractNeo4jBatchProcessor(ABC):
             self.logger.info(f"Processed {self.total_processed} rows so far.")
 
     def _split_batch_into_sub_batches(self, batch: list) -> list:
-        sub_batch_size = len(batch) // self.max_workers
-        return [batch[i : i + sub_batch_size] for i in range(0, len(batch), sub_batch_size)]
+        sub_batch_size = max(1, len(batch) // self.max_workers)
+        return [batch[i: i + sub_batch_size] for i in range(0, len(batch), sub_batch_size)]
 
     def _process_in_thread(self, sub_batch: list) -> None:
         with self.driver.session() as session:

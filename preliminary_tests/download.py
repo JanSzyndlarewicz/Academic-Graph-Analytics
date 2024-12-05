@@ -1,10 +1,28 @@
 import json
+import jsonlines
+import logging
+import os
+from pathlib import Path
+import requests
+import sys
 import urllib.parse
 
-import jsonlines
-import requests
 
 from config import PAPER_SEARCH_URL, SAFETY_LIMIT, SCOPUS_KEY
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+logFormatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s]  %(message)s")
+
+fileHandler = logging.FileHandler("download.log", encoding="utf-8")
+fileHandler.setFormatter(logFormatter)
+logger.addHandler(fileHandler)
+
+consoleHandler = logging.StreamHandler(sys.stdout)
+consoleHandler.setFormatter(logFormatter)
+logger.addHandler(consoleHandler)
+
 
 # Note on API parameters:
 # query - we can use:
@@ -34,15 +52,19 @@ def save_entries_to_jsonlines(json_response, output_path):
 
 
 def get_from_api(url):
+    logger.info(f"Querying {url}")
     res = requests.get(url)
-    print("Querying " + res.url)
+    #print("Querying " + res.url)
     if res.status_code == 200:
+        logger.info(f"Query {url} succesfull!")
         return res.json()
+    logger.warning(f"Query {url} failed")
     return None
 
 
-def get_next_url(json_response):
-    if "entry" not in json_response["search-results"]:
+def get_next_url(json_response, expected_entries : int) -> str | None:
+    if ("entry" not in json_response['search-results']) or (len(json_response['search-results']['entry']) < expected_entries):
+
         return None
     for link in json_response["search-results"]["link"]:
         if link["@ref"] == "next":
@@ -60,26 +82,126 @@ def save_all_entries(output_path, **params):
     if not "httpAccept" in params:
         params["httpAccept"] = "application/json"
 
+    logger.info(f"Beginning a query series, parameters {params}")
+
     url = PAPER_SEARCH_URL + "?" + urllib.parse.urlencode(params)
     not_done = True
     i = 0
     while not_done:
         j = get_from_api(url)
         if j is None:
+            logger.warning(f"Query failed, query series aborted.")
             break
         not_done = save_entries_to_jsonlines(j, output_path)
-        url = get_next_url(j)
+        url = get_next_url(j, int(params["count"]))
         if url is None:
+            logger.info(f"Query series finished.")
             not_done = False
 
         # this is just because I am paranoid that I will accidentally create an infite loop and burn all my requests
         # set SAFETY_LIMIT to whatever you feel is reasonable or just get rid of this clause if you know what you are doing
         i += 1
         if i >= SAFETY_LIMIT:
+            logger.warning(f"Safety limit reached, query series aborted.")
             return
+        
+def save_by_institutions_and_fields(institutions : list[str], fields : list[str], apiKey : str, country_mapping : dict[str,str] = None, institution_names : list[str] = None):
+    
+    if institution_names is None or len(institutions) != len(institution_names):
+        institution_names = institutions
+    else:
+        institution_names = [f"{id} ({name})" for id,name in zip(institutions,institution_names)]
+    
+    for id,name in zip(institutions,institution_names):
+        dir_path = Path(__file__).parent / "data"
+        if country_mapping is not None:
+            dir_path = dir_path / country_mapping.get(id, "unknown")
+        if not dir_path.exists():
+            dir_path.mkdir()
+        for field in fields:           
+            output_path = dir_path / f"{id}-{field}.jsonl"
+            if not output_path.exists():
+                logger.info(f"Beginning data collection for institution {name} and field {field}, output file: {output_path}")
+                query = f"af-id({id})"
+                save_all_entries(output_path, query=query, subj=field, apiKey=apiKey)
+            else:
+                logger.info(f"Data for institution {name} and field {field}, output file: {output_path} already exists; skipping")
+
+
+def read_unis_file_group_by_countries(path, n=None) -> dict:
+    with open(path, "r") as file:
+        data = json.load(file)
+    country_uni_dict = {}
+    for entry in data:
+        country = entry['country']
+        if country not in country_uni_dict: country_uni_dict[country] = []
+        country_uni_dict[country].append(entry)
+    if n is not None:
+        for country in country_uni_dict:
+            country_uni_dict[country] = country_uni_dict[country][:n] if len(country_uni_dict[country]) >= n else country_uni_dict[country]
+    return country_uni_dict
+
+def process_entries(country_uni_dict) -> tuple[list[str], list[str], dict[str,str]]:
+    institutions = [x['id'] for xs in country_uni_dict.values() for x in xs]
+    names = [x['name'] for xs in country_uni_dict.values() for x in xs]
+    mapping = {}
+    for country,unis in country_uni_dict.items():
+        for uni in unis:
+            mapping[uni['id']] = country
+    return institutions, names, mapping
+
+def generate_numbers_of_records_report(output_path : Path, institutions : list[str], fields : list[str], institution_names : list[str] = None):
+    if institution_names is None:
+        institution_descs = institutions
+    else:
+        if len(institutions) != len(institution_names):
+            raise ValueError("Institutions different length than institution_names")
+        institution_descs = [f"{id} ({name})" for id, name in zip(institutions,institution_names)]
+
+    params = {
+        "count" : "1",
+        "httpAccept" : "application/json",
+        "apiKey" : SCOPUS_KEY
+    }
+
+    logger.info(f"Beginning number of entries query, institutions={institution_descs}, fields={fields}")
+
+    with open(output_path, "a", encoding="utf-8") as file:
+        for field in fields:
+            params["subj"] = field
+            count = 0
+            file.write(f"Field: {field} \n")
+            for id, desc in zip(institutions, institution_descs):
+                logger.info(f"Beginning number of entries check for institution {desc} and field {field}")
+                params["query"] = f"af-id({id})"
+                url = PAPER_SEARCH_URL + "?" + urllib.parse.urlencode(params)
+                jres = get_from_api(url)
+                try:
+                    number_of_entries = int(jres['search-results']['opensearch:totalResults'])
+                    count += number_of_entries
+                except:
+                    logger.warning(f"Failed to get number of entries for institution {desc}, field {field}")
+                    number_of_entries = "unknown"
+                file.write(f"{desc} : {number_of_entries} \n")
+            file.write(f"Total : {count} \n")
+            file.write("\n")
+        
+def exclude_countries(country_uni_dict : dict, countries_to_exclude : list[str]) -> dict:
+    for country in countries_to_exclude:
+        del country_uni_dict[country]
+
 
 
 if __name__ == "__main__":
-    # save_all_entries("test_batch.jsonl", query="af-id(60019987)", subj="agri", apiKey=SCOPUS_KEY)
-    # save_all_entries("60021331-econ-batch.jsonl", query="af-id(60021331)", subj="econ", apiKey=SCOPUS_KEY)
+
+
+    fields = ["econ"]
+    unis = read_unis_file_group_by_countries("preliminary_tests/best_affils_for_top_unis_01-17-42_transformed.json", n=3)
+    institutions, names, mapping = process_entries(unis)
+
+    save_by_institutions_and_fields(institutions, fields , SCOPUS_KEY, country_mapping=mapping, institution_names=names)
+
+    # number_of_records_file_path = Path(__file__).parent / "data" / "test_report.txt"
+    # generate_numbers_of_records_report(number_of_records_file_path, institutions, fields, names)
     pass
+

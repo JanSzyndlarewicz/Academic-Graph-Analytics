@@ -19,6 +19,12 @@ MATCH (n) DETACH DELETE n
 
 -----------------------------------------------
 
+Delete all nodes of a specific label
+MATCH (n:LabelName) DETACH DELETE n
+
+-----------------------------------------------
+
+
 Creating graph of countries
 
 MATCH (base:Paper)-[:CITED_BY]->(cited:Paper)
@@ -36,6 +42,28 @@ UNWIND cited_countries AS cited_country
 MERGE (bc:Country {name: base_country})
 MERGE (cc:Country {name: cited_country})
 MERGE (bc)-[r:COUNTRY_CITED_BY]->(cc)
+ON CREATE SET r.weight = 1
+ON MATCH SET r.weight = r.weight + 1
+
+-----------------------------------------------
+
+Creating graph of unis
+
+MATCH (base:Paper)-[:CITED_BY]->(cited:Paper)
+WITH base.universities AS base_universities, cited.universities AS cited_universities
+UNWIND base_universities AS base_university
+UNWIND cited_universities AS cited_university
+WITH base_university, cited_university, COUNT(*) AS citation_count
+RETURN base_university, cited_university, citation_count
+ORDER BY citation_count DESC
+
+MATCH (base:Paper)-[:CITED_BY]->(cited:Paper)
+WITH base.universities AS base_universities, cited.universities AS cited_universities
+UNWIND base_universities AS base_university
+UNWIND cited_universities AS cited_university
+MERGE (bc:University {name: base_university})
+MERGE (cc:University {name: cited_university})
+MERGE (bc)-[r:UNIVERSITY_CITED_BY]->(cc)
 ON CREATE SET r.weight = 1
 ON MATCH SET r.weight = r.weight + 1
 

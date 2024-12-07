@@ -21,7 +21,7 @@ MATCH (n) DETACH DELETE n
 
 Creating graph of countries
 
-MATCH (base:Paper)-[:CITES]->(cited:Paper)
+MATCH (base:Paper)-[:CITED_BY]->(cited:Paper)
 WITH base.countries AS base_countries, cited.countries AS cited_countries
 UNWIND base_countries AS base_country
 UNWIND cited_countries AS cited_country
@@ -29,7 +29,7 @@ WITH base_country, cited_country, COUNT(*) AS citation_count
 RETURN base_country, cited_country, citation_count
 ORDER BY citation_count DESC
 
-MATCH (base:Paper)-[:CITES]->(cited:Paper)
+MATCH (base:Paper)-[:CITES_BY]->(cited:Paper)
 WITH base.countries AS base_countries, cited.countries AS cited_countries
 UNWIND base_countries AS base_country
 UNWIND cited_countries AS cited_country

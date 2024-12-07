@@ -19,7 +19,7 @@ class SemanticScholarCitationsBatchProcessor(AbstractNeo4jBatchProcessor):
                             """
                             MATCH (base:Paper {id: $base_doi})
                             MATCH (cited:Paper {id: $citation_doi})
-                            MERGE (base)-[:CITES]->(cited)
+                            MERGE (base)-[:CITED_BY]->(cited)
                             """,
                             base_doi=base_doi,
                             citation_doi=citation_doi,

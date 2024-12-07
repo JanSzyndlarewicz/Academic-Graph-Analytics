@@ -29,13 +29,13 @@ WITH base_country, cited_country, COUNT(*) AS citation_count
 RETURN base_country, cited_country, citation_count
 ORDER BY citation_count DESC
 
-MATCH (base:Paper)-[:CITES_BY]->(cited:Paper)
+MATCH (base:Paper)-[:CITED_BY]->(cited:Paper)
 WITH base.countries AS base_countries, cited.countries AS cited_countries
 UNWIND base_countries AS base_country
 UNWIND cited_countries AS cited_country
 MERGE (bc:Country {name: base_country})
 MERGE (cc:Country {name: cited_country})
-MERGE (bc)-[r:CITED_BY]->(cc)
+MERGE (bc)-[r:COUNTRY_CITED_BY]->(cc)
 ON CREATE SET r.weight = 1
 ON MATCH SET r.weight = r.weight + 1
 

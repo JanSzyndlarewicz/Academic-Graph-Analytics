@@ -85,3 +85,17 @@ Get edges originating from nodes within a given timespan
 MATCH (a:Paper)-[e]->(b:Paper)
 WHERE DATE(a.publication_date) < DATE("2022-01-01") AND DATE(a.publication_date) > DATE("2021-01-01")
 RETURN e
+
+-----------------------------------------------
+
+Get country connections between papers published in specific timespan
+MATCH (cited:Paper)-[:CITED_BY]->(base:Paper)
+WHERE DATE(base.publication_date) < DATE("2020-01-01") AND DATE(base.publication_date) > DATE("2019-01-01")
+WITH base.countries AS base_countries, cited.countries AS cited_countries
+UNWIND base_countries AS base_country
+UNWIND cited_countries AS cited_country
+MERGE (bc:Country_2019 {name: base_country})
+MERGE (cc:Country_2019 {name: cited_country})
+MERGE (bc)-[r:COUNTRY_CITED_BY]->(cc)
+ON CREATE SET r.weight = 1
+ON MATCH SET r.weight = r.weight + 1

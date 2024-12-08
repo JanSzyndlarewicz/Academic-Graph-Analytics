@@ -57,7 +57,7 @@ class UniDataCollector():
         # self.fill_with_metrics()
         
         self.index_field = index_field
-        self.df = self.make_df(metric)
+        self.df = self.make_df()
         
     
         
@@ -98,7 +98,7 @@ CALL gds.graph.drop('myGraph{str(type)}')
           'UNIVERSITY_CITES',  
           {{ relationshipProperties: ['weight'] }}
         )"""
-        # self.node_pull.run_query(query=query1)
+        self.node_pull.run_query(query=query1)
 
         query2 = f"""
         CALL gds.pageRank.stream('myGraph{str(type)}', {{
@@ -120,7 +120,7 @@ CALL gds.graph.drop('myGraph{str(type)}')
     def save_to_csv(self):
         pass
     
-    def make_df(self, metric, index_field=None):
+    def make_df(self, index_field=None):
         if not index_field:
             index_field = self.index_field
         df = None
@@ -153,7 +153,6 @@ CALL gds.graph.drop('myGraph{str(type)}')
             df = self.df
         # Transpose the DataFrame to make years the index
         
-        df = df[-10:]
         df = df.T
         df.index.name = 'Year'  # Rename the index to 'Year'
         # df = df[-16:]

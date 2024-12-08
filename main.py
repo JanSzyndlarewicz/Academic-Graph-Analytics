@@ -2,6 +2,7 @@ import os
 import re
 
 from config import PAPERS_FIELDS_MAPPING
+from data_retrival.neo4j.node_pull import UniDataCollector
 from data_retrival.neo4j.scholar_citations import SemanticScholarCitationsBatchProcessor
 from data_retrival.neo4j.semantic_scholar_papers import ScopusPapersBatchProcessor
 from data_retrival.semantic_scholar.papers_handler import process_and_save_chunks
@@ -197,6 +198,29 @@ def main():
     # Uploading the unique citations to neo4j
     # upload_citations_to_neo4j(unique_citations_path)
 
+def node_pull():
+    ### WARNING!!! ###
+    # Make sure to have the CITES relationship corrected #
+    
+    # -------------------------------------------------- #
+    
+    node_pull = UniDataCollector("University", range=(1970, 2025), index_field="name", metric="score")
+    # Do in case of any errors, make sure to comment after
+    # node_pull.drop_temporary_graph(for_range=True)
+    
+    # Creates the subgraphs in the neo4j database with country name and citations, best comment after first use
+    # node_pull.make_time_series_analysis_subgraphs()
+    
+    # Creates the temporary graphs for the analysis, best comment after first use
+    # node_pull.create_temporary_graph(for_range=True)
+    
+    # Makes the time series analysis for the universities, assigns to self.df
+    node_pull.make_df(index_field="name")
+    
+    # Makes the visualisation on previously created df
+    node_pull.visualise()
+    
 
 if __name__ == "__main__":
     main()
+    node_pull()

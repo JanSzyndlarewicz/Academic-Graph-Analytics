@@ -99,3 +99,17 @@ MERGE (cc:Country_2019 {name: cited_country})
 MERGE (bc)-[r:COUNTRY_CITED_BY]->(cc)
 ON CREATE SET r.weight = 1
 ON MATCH SET r.weight = r.weight + 1
+
+-----------------------------------------------
+
+Get university connections between papers published in specific timespan
+MATCH (cited:Paper)-[:CITED_BY]->(base:Paper)
+WHERE DATE(base.publication_date) < DATE("2020-01-01") AND DATE(base.publication_date) > DATE("2019-01-01")
+WITH base.universities AS base_universities, cited.universities AS cited_universities
+UNWIND base_universities AS base_university
+UNWIND cited_universities AS cited_university
+MERGE (bc:University_2019 {name: base_university})
+MERGE (cc:University_2019 {name: cited_university})
+MERGE (bc)-[r:UNIVERSITY_CITED_BY]->(cc)
+ON CREATE SET r.weight = 1
+ON MATCH SET r.weight = r.weight + 1

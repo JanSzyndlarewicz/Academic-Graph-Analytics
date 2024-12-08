@@ -42,5 +42,16 @@ class Neo4JConnector(ABC):
                 result = [record.data() for record in result]
                 return result
             
+    @staticmethod
+    def run_query_static(query, parameters={}):
+        driver = GraphDatabase.driver(
+            NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD), max_transaction_retry_time=NEO4J_MAX_TRANSACTION_RETRY_TIME
+        )
+        with driver.session() as session:
+            with session.begin_transaction() as tx:
+                result = tx.run(query, parameters=parameters)
+                result = [record.data() for record in result]
+                return result
+        driver.close()
 
         

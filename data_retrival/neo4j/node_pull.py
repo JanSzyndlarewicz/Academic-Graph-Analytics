@@ -98,6 +98,7 @@ class UniDataCollector():
                     ON MATCH SET r.weight = r.weight + 1
                     """
                 )
+                
             
     def drop_temporary_graph(self, type=None, for_range=False):
         if not type:
@@ -114,15 +115,31 @@ class UniDataCollector():
                 """
             self.node_pull.run_query(query=query_drop_graph)
             
+            
     def create_temporary_graph(self, type=None, for_range=False):
-        query = f"""
-            CALL gds.graph.project(
-          'myGraph{str(type)}', 
-          '{str(type)}',  
-          'UNIVERSITY_CITES',  
-          {{ relationshipProperties: ['weight'] }}
-        )"""
-        self.node_pull.run_query(query=query)
+        if not type:
+            type = self.node_pull.type
+        if for_range:
+            for i in range(self.range[0], self.range[1] + 1):
+                query = f"""
+                CALL gds.graph.project(
+                'myGraph{str(type)}_{str(i)}',
+                '{str(type)}',
+                'UNIVERSITY_CITES',
+                {{ relationshipProperties: ['weight'] }}
+                )
+                """
+                self.node_pull.run_query(query=query)
+        else:
+            query = f"""
+                CALL gds.graph.project(
+              'myGraph{str(type)}', 
+              '{str(type)}',  
+              'UNIVERSITY_CITES',  
+              {{ relationshipProperties: ['weight'] }}
+            )"""
+            self.node_pull.run_query(query=query)
+            
             
     def get_page_rank_from_temp_graphs(self, type=None):
         if type is None:
@@ -144,7 +161,8 @@ class UniDataCollector():
         result = self.node_pull.run_query(query=query)
         return result
             
-    def make_df(self, metric, index_field=None):
+            
+    def make_df(self, index_field=None):
         if not index_field:
             index_field = self.index_field
         df = None
@@ -173,6 +191,7 @@ class UniDataCollector():
         self.df = df
         return df
     
+    # this is work zone, playground u can copy it to make ur own
     def visualise(self, df=None):
         if df is None:
             df = self.df
@@ -233,8 +252,66 @@ class UniDataCollector():
         plt.legend(title="Universities", bbox_to_anchor=(1.05, 1), loc='upper left')  # Move legend outside plot
         plt.grid()
         plt.show()
-    
-    def append_to_df(self, ):
-        pass
         
-    
+        
+    def visualise_aggr_by_countries(self, df=None, bucketed=False, bucket_size=2, picked_countries=None):
+            if df is None:
+                df = self.df
+            # Transpose the DataFrame to make years the index
+            df = df.T
+            df.index.name = 'Year'  # Rename the index to 'Year'
+            # df = df[-16:]
+
+            if bucketed:
+                upper_bound = df.index.max()
+                lower_bound = df.index.min()
+                if upper_bound < lower_bound:
+                    upper_bound, lower_bound = lower_bound, upper_bound
+                bins = range(lower_bound, upper_bound, bucket_size)  # Bin edges
+
+                labels = [i for i in range(lower_bound, upper_bound, bucket_size)]  # Labels for the bins
+                labels = labels[:-1]
+                # Ensure the number of labels is one less than the number of bins
+                df['decade'] = pd.cut(df.index, bins=bins, labels=labels, right=False)
+
+                # Group by decade and aggregate (e.g., sum the values)
+                aggregated_df = df.groupby('decade').sum()
+
+                # Set the 'decade' as the new index
+                aggregated_df = aggregated_df.reset_index().set_index('decade')
+
+            country_name = [col.split(' IN ')[-1] for col in df.columns]
+
+            # Aggregate columns based on the last part of their names
+            grouped_data = {}
+            for i, part in enumerate(country_name):
+                if part not in grouped_data:
+                    grouped_data[part] = []
+                grouped_data[part].append(df.iloc[:, i])
+
+            # Sum the columns in each group (you can use other aggregation methods)
+            aggregated_df = {}
+            for part, columns in grouped_data.items():
+                aggregated_df[part] = pd.concat(columns, axis=1).sum(axis=1)
+
+            # Convert to DataFrame
+            aggregated_df = pd.DataFrame(aggregated_df)
+            if picked_countries:
+                aggregated_df = aggregated_df.loc[:, picked_countries]
+            # aggregated_df = aggregated_df.loc[:, ['States', 'Russia']]
+            # Plot
+            self.plot(aggregated_df)
+
+
+
+
+    def plot(self, df=None):
+        if df is None:
+            df = self.df
+        df.plot(figsize=(10, 6))
+        plt.title("Page Rank Over Years")
+        plt.xlabel("Year")
+        plt.ylabel("Metric")
+        plt.legend(title="Universities", bbox_to_anchor=(1.05, 1), loc='upper left')  # Move legend outside plot
+        plt.grid()
+        plt.show()

@@ -2,6 +2,7 @@ import os
 import re
 
 from config import PAPERS_FIELDS_MAPPING
+from data_retrival.neo4j.neo4j_connector import Neo4JConnector
 from data_retrival.neo4j.node_pull import UniDataCollector
 from data_retrival.neo4j.scholar_citations import SemanticScholarCitationsBatchProcessor
 from data_retrival.neo4j.semantic_scholar_papers import ScopusPapersBatchProcessor
@@ -203,6 +204,16 @@ def node_pull():
     # Make sure to have the CITES relationship corrected #
     
     # -------------------------------------------------- #
+    # WARNING: this will do it for you, but it will make any other graph than Paper based useless #
+    # Neo4JConnector.run_query_static("""
+    #                                 MATCH (start)-[rel]->(end)
+    #                                 WITH start, rel, end, type(rel) AS rel_type, rel.properties AS rel_props
+    #                                 CREATE (end)-[new_rel:CITES]->(start)
+    #                                 SET new_rel += CASE WHEN rel_props IS NOT NULL THEN rel_props ELSE {} END
+    #                                 DELETE rel
+    #                                 """)
+    
+    # -------------------------------------------------- #
     
     node_pull = UniDataCollector("University", range=(1970, 2025), index_field="name", metric="score")
     # Do in case of any errors, make sure to comment after
@@ -212,13 +223,20 @@ def node_pull():
     # node_pull.make_time_series_analysis_subgraphs()
     
     # Creates the temporary graphs for the analysis, best comment after first use
-    # node_pull.create_temporary_graph(for_range=True)
+    node_pull.create_temporary_graph(for_range=True)
     
     # Makes the time series analysis for the universities, assigns to self.df
     node_pull.make_df(index_field="name")
     
     # Makes the visualisation on previously created df
-    node_pull.visualise()
+    # node_pull.visualise_aggr_by_countries(picked_countries=[
+    #     "United States", 
+    #     "China", 
+    #     "Germany", 
+    #     "United Kingdom", 
+    #     "Russia", 
+    #     "Canada"
+    #     ])
     
 
 if __name__ == "__main__":

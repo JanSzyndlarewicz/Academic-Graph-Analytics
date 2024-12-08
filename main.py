@@ -200,7 +200,9 @@ def main():
 
 def node_pull():
     from data_retrival.neo4j.node_pull import NodePull
-    node_pull = UniDataCollector("University", range=(1970, 2025), index_field="name", metric="score")
+    node_pull = UniDataCollector("University", range=(2015, 2020), index_field="name", metric="score")
+    node_pull.make_temporary_analysis_subgraphs()
+    node_pull.make_df()
     node_pull.visualise()
     
     # nodes = node_pull.get_nodes("University", limit=3000, index_field="name")

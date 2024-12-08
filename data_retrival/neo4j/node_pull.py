@@ -53,24 +53,21 @@ class UniDataCollector():
         self.node_pull = NodePull(type)
         self.range: tuple[int, int] = range
         self.metric = metric
-        # self.make_temporary_analysis_subgraphs()
-        # self.fill_with_metrics()
+        
         
         self.index_field = index_field
-        self.df = self.make_df()
         
     
         
     def make_temporary_analysis_subgraphs(self):
-        for i in range(self.range[0], self.range[1] + 1):  
+        for i in range(self.range[0], self.range[1] + 1):
             self.node_pull.run_query(
                 f"""
                 MATCH (n:University_{str(i)}) DETACH DELETE n"""
             )
             print(f"Deleted nodes for {i}")
-        
         for i in range(self.range[0], self.range[1] + 1):             
-            self.node_pull.run_query(
+            r = self.node_pull.run_query(
                 f"""
                 MATCH (base:Paper)-[:CITES]->(cited:Paper)
                 WHERE DATE(base.publication_date) < DATE("{str(i+1)}-01-01") AND DATE(base.publication_date) >= DATE("{str(i)}-01-01")
@@ -85,12 +82,13 @@ class UniDataCollector():
                 ON MATCH SET r.weight = r.weight + 1
                 """
             )
+            print(r)
             
     def fill_with_metrics(self, type):
         query_drop_graph = f"""
 CALL gds.graph.drop('myGraph{str(type)}')
 """
-        # self.node_pull.run_query(query=query_drop_graph)
+        self.node_pull.run_query(query=query_drop_graph)
         query1 = f"""
             CALL gds.graph.project(
           'myGraph{str(type)}', 
@@ -146,6 +144,7 @@ CALL gds.graph.drop('myGraph{str(type)}')
                 df = appended_df
             else:
                 df = pd.concat([df, appended_df], axis=1) 
+        self.df = df
         return df
     
     def visualise(self, df=None):

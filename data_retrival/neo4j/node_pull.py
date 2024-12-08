@@ -52,11 +52,16 @@ class UniDataCollector():
     def __init__(self, type, range, index_field, metric):
         self.node_pull = NodePull(type)
         self.range: tuple[int, int] = range
-        self.metric = metric       
-        self.index_field = index_field
-
+        self.metric = metric
+        # self.make_temporary_analysis_subgraphs()
+        # self.fill_with_metrics()
         
-    def make_time_series_analysis_subgraphs(self, field_filter=None):
+        self.index_field = index_field
+        self.df = self.make_df(metric)
+        
+    
+        
+    def make_temporary_analysis_subgraphs(self):
         for i in range(self.range[0], self.range[1] + 1):  
             self.node_pull.run_query(
                 f"""
@@ -64,88 +69,38 @@ class UniDataCollector():
             )
             print(f"Deleted nodes for {i}")
         
-        for i in range(self.range[0], self.range[1] + 1):  
-            if field_filter is None:           
-                self.node_pull.run_query(
-                    f"""
-                    MATCH (base:Paper)-[:CITES]->(cited:Paper)
-                    WHERE DATE(base.publication_date) < DATE("{str(i+1)}-01-01") AND DATE(base.publication_date) >= DATE("{str(i)}-01-01")
-                    WITH base.universities AS base_universities, cited.universities AS cited_universities,
-                    base.countries AS base_country, cited.countries AS cited_country
-                    UNWIND base_universities AS base_university
-                    UNWIND cited_universities AS cited_university
-                    MERGE (bc:University_{str(i)} {{name: base_university, country: base_country}})
-                    MERGE (cc:University_{str(i)} {{name: cited_university, country: cited_country}})
-                    MERGE (bc)-[r:UNIVERSITY_CITES]->(cc)
-                    ON CREATE SET r.weight = 1
-                    ON MATCH SET r.weight = r.weight + 1
-                    """
-                )
-            else:
-                self.node_pull.run_query(
-                    f"""
-                    MATCH (base:Paper)-[:CITES]->(cited:Paper)
-                    WHERE DATE(base.publication_date) < DATE("{str(i+1)}-01-01") AND DATE(base.publication_date) >= DATE("{str(i)}-01-01")
-                    AND base.field == {field_filter}
-                    WITH base.universities AS base_universities, cited.universities AS cited_universities,
-                    base.countries AS base_country, cited.countries AS cited_country
-                    UNWIND base_universities AS base_university
-                    UNWIND cited_universities AS cited_university
-                    MERGE (bc:University_{str(i)} {{name: base_university, country: base_country}})
-                    MERGE (cc:University_{str(i)} {{name: cited_university, country: cited_country}})
-                    MERGE (bc)-[r:UNIVERSITY_CITES]->(cc)
-                    ON CREATE SET r.weight = 1
-                    ON MATCH SET r.weight = r.weight + 1
-                    """
-                )
-                
-            
-    def drop_temporary_graph(self, type=None, for_range=False):
-        if not type:
-            type = self.node_pull.type
-        if for_range:
-            for i in range(self.range[0], self.range[1] + 1):
-                query_drop_graph = f"""
-                CALL gds.graph.drop('myGraph{str(type)}_{str(i)}')
+        for i in range(self.range[0], self.range[1] + 1):             
+            self.node_pull.run_query(
+                f"""
+                MATCH (base:Paper)-[:CITES]->(cited:Paper)
+                WHERE DATE(base.publication_date) < DATE("{str(i+1)}-01-01") AND DATE(base.publication_date) >= DATE("{str(i)}-01-01")
+                WITH base.universities AS base_universities, cited.universities AS cited_universities,
+                base.countries AS base_country, cited.countries AS cited_country
+                UNWIND base_universities AS base_university
+                UNWIND cited_universities AS cited_university
+                MERGE (bc:University_{str(i)} {{name: base_university, country: base_country}})
+                MERGE (cc:University_{str(i)} {{name: cited_university, country: cited_country}})
+                MERGE (bc)-[r:UNIVERSITY_CITES]->(cc)
+                ON CREATE SET r.weight = 1
+                ON MATCH SET r.weight = r.weight + 1
                 """
-                self.node_pull.run_query(query=query_drop_graph)
-        else:
-            query_drop_graph = f"""
-                CALL gds.graph.drop('myGraph{str(type)}')
-                """
-            self.node_pull.run_query(query=query_drop_graph)
+            )
             
-            
-    def create_temporary_graph(self, type=None, for_range=False):
-        if not type:
-            type = self.node_pull.type
-        if for_range:
-            for i in range(self.range[0], self.range[1] + 1):
-                query = f"""
-                CALL gds.graph.project(
-                'myGraph{str(type)}_{str(i)}',
-                '{str(type)}',
-                'UNIVERSITY_CITES',
-                {{ relationshipProperties: ['weight'] }}
-                )
-                """
-                self.node_pull.run_query(query=query)
-        else:
-            query = f"""
-                CALL gds.graph.project(
-              'myGraph{str(type)}', 
-              '{str(type)}',  
-              'UNIVERSITY_CITES',  
-              {{ relationshipProperties: ['weight'] }}
-            )"""
-            self.node_pull.run_query(query=query)
-            
-            
-    def get_page_rank_from_temp_graphs(self, type=None):
-        if type is None:
-            type = self.node_pull.type
-            
-        query = f"""
+    def fill_with_metrics(self, type):
+        query_drop_graph = f"""
+CALL gds.graph.drop('myGraph{str(type)}')
+"""
+        # self.node_pull.run_query(query=query_drop_graph)
+        query1 = f"""
+            CALL gds.graph.project(
+          'myGraph{str(type)}', 
+          '{str(type)}',  
+          'UNIVERSITY_CITES',  
+          {{ relationshipProperties: ['weight'] }}
+        )"""
+        # self.node_pull.run_query(query=query1)
+
+        query2 = f"""
         CALL gds.pageRank.stream('myGraph{str(type)}', {{
           maxIterations: 20,
           dampingFactor: 0.85,
@@ -158,11 +113,14 @@ class UniDataCollector():
         
         
         """
-        result = self.node_pull.run_query(query=query)
+        result = self.node_pull.run_query(query=query2)
         return result
             
-            
-    def make_df(self, index_field=None):
+        
+    def save_to_csv(self):
+        pass
+    
+    def make_df(self, metric, index_field=None):
         if not index_field:
             index_field = self.index_field
         df = None
@@ -170,7 +128,7 @@ class UniDataCollector():
             scoped_type = self.node_pull.type + "_" + str(i)
             
             try:
-                result = self.get_page_rank_from_temp_graphs(type=scoped_type)
+                result = self.fill_with_metrics(type=scoped_type)
                 result = sorted(result, key=lambda x: x['name'])
                 print(result)
             except Exception as e:
@@ -188,17 +146,18 @@ class UniDataCollector():
                 df = appended_df
             else:
                 df = pd.concat([df, appended_df], axis=1) 
-        self.df = df
         return df
     
-    # this is work zone, playground u can copy it to make ur own
     def visualise(self, df=None):
         if df is None:
             df = self.df
         # Transpose the DataFrame to make years the index
+        
+        df = df[-10:]
         df = df.T
         df.index.name = 'Year'  # Rename the index to 'Year'
         # df = df[-16:]
+        print("lool",df.columns)
         # Bucket the years into decades using integer division
         # Define the bins and labels correctly
         bucket_size = 2
@@ -209,6 +168,7 @@ class UniDataCollector():
         bins = range(lower_bound, upper_bound, bucket_size)  # Bin edges
         
         labels = [i for i in range(lower_bound, upper_bound, bucket_size)]  # Labels for the bins
+        print(len(labels), len(bins))
         labels = labels[:-1]
         # Ensure the number of labels is one less than the number of bins
         # df['decade'] = pd.cut(df.index, bins=bins, labels=labels, right=False)
@@ -220,30 +180,14 @@ class UniDataCollector():
         # aggregated_df = aggregated_df.reset_index().set_index('decade')
         
         # see trend of all universities
-        # aggregated_df = df
-        # aggregated_df.fillna(aggregated_df.mean(), inplace=True)
-        # aggregated_df = aggregated_df.filter(regex="States")
-        # aggregated_df = aggregated_df.mean(axis=1)
-        # aggregated_df = aggregated_df.to_frame()
+        aggregated_df = df
+        aggregated_df.fillna(aggregated_df.mean(), inplace=True)
+        aggregated_df = aggregated_df.filter(regex="Israel")
+        aggregated_df = aggregated_df.mean(axis=1)
+        aggregated_df = aggregated_df.to_frame()
+        print(aggregated_df)
+        print("colll",aggregated_df.columns)
         
-        last_part = [col.split(' ')[-1] for col in df.columns]
-
-        # Aggregate columns based on the last word of their names
-        # Group the columns based on the last part of the column names
-        grouped_data = {}
-        for i, part in enumerate(last_part):
-            if part not in grouped_data:
-                grouped_data[part] = []
-            grouped_data[part].append(df.iloc[:, i])
-
-        # Sum the columns in each group (you can use other aggregation methods)
-        aggregated_df = {}
-        for part, columns in grouped_data.items():
-            aggregated_df[part] = pd.concat(columns, axis=1).sum(axis=1)
-
-        # Convert to DataFrame
-        aggregated_df = pd.DataFrame(aggregated_df)
-        aggregated_df = aggregated_df.loc[:, ['States', 'Russia']]
         # Plot
         aggregated_df.plot(figsize=(10, 6))
         plt.title("Metrics Over Years")
@@ -251,67 +195,9 @@ class UniDataCollector():
         plt.ylabel("Metric")
         plt.legend(title="Universities", bbox_to_anchor=(1.05, 1), loc='upper left')  # Move legend outside plot
         plt.grid()
-        plt.show()
+        # plt.show()
+    
+    def append_to_df(self, ):
+        pass
         
-        
-    def visualise_aggr_by_countries(self, df=None, bucketed=False, bucket_size=2, picked_countries=None):
-            if df is None:
-                df = self.df
-            # Transpose the DataFrame to make years the index
-            df = df.T
-            df.index.name = 'Year'  # Rename the index to 'Year'
-            # df = df[-16:]
-
-            if bucketed:
-                upper_bound = df.index.max()
-                lower_bound = df.index.min()
-                if upper_bound < lower_bound:
-                    upper_bound, lower_bound = lower_bound, upper_bound
-                bins = range(lower_bound, upper_bound, bucket_size)  # Bin edges
-
-                labels = [i for i in range(lower_bound, upper_bound, bucket_size)]  # Labels for the bins
-                labels = labels[:-1]
-                # Ensure the number of labels is one less than the number of bins
-                df['decade'] = pd.cut(df.index, bins=bins, labels=labels, right=False)
-
-                # Group by decade and aggregate (e.g., sum the values)
-                aggregated_df = df.groupby('decade').sum()
-
-                # Set the 'decade' as the new index
-                aggregated_df = aggregated_df.reset_index().set_index('decade')
-
-            country_name = [col.split(' IN ')[-1] for col in df.columns]
-
-            # Aggregate columns based on the last part of their names
-            grouped_data = {}
-            for i, part in enumerate(country_name):
-                if part not in grouped_data:
-                    grouped_data[part] = []
-                grouped_data[part].append(df.iloc[:, i])
-
-            # Sum the columns in each group (you can use other aggregation methods)
-            aggregated_df = {}
-            for part, columns in grouped_data.items():
-                aggregated_df[part] = pd.concat(columns, axis=1).sum(axis=1)
-
-            # Convert to DataFrame
-            aggregated_df = pd.DataFrame(aggregated_df)
-            if picked_countries:
-                aggregated_df = aggregated_df.loc[:, picked_countries]
-            # aggregated_df = aggregated_df.loc[:, ['States', 'Russia']]
-            # Plot
-            self.plot(aggregated_df)
-
-
-
-
-    def plot(self, df=None):
-        if df is None:
-            df = self.df
-        df.plot(figsize=(10, 6))
-        plt.title("Page Rank Over Years")
-        plt.xlabel("Year")
-        plt.ylabel("Metric")
-        plt.legend(title="Universities", bbox_to_anchor=(1.05, 1), loc='upper left')  # Move legend outside plot
-        plt.grid()
-        plt.show()
+    

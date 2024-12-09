@@ -85,18 +85,16 @@ def save_all_entries(output_path, **params):
     logger.info(f"Beginning a query series, parameters {params}")
 
     url = PAPER_SEARCH_URL + "?" + urllib.parse.urlencode(params)
-    not_done = True
     i = 0
-    while not_done:
+    while url is not None:
         j = get_from_api(url)
         if j is None:
             logger.warning(f"Query failed, query series aborted.")
             break
-        not_done = save_entries_to_jsonlines(j, output_path)
+        save_entries_to_jsonlines(j, output_path)
         url = get_next_url(j, int(params["count"]))
         if url is None:
             logger.info(f"Query series finished.")
-            not_done = False
 
         # this is just because I am paranoid that I will accidentally create an infite loop and burn all my requests
         # set SAFETY_LIMIT to whatever you feel is reasonable or just get rid of this clause if you know what you are doing
@@ -148,7 +146,11 @@ def process_entries(country_uni_dict) -> tuple[list[str], list[str], dict[str,st
     for country,unis in country_uni_dict.items():
         for uni in unis:
             mapping[uni['id']] = country
+    logger.info(f"Processed university list, returning {len(institutions)} institutions.")
     return institutions, names, mapping
+
+def get_ids_names_mapping_from_file(path, n : int =None) -> tuple[list[str], list[str], dict[str,str]]:
+    return process_entries(read_unis_file_group_by_countries(path,n))
 
 def generate_numbers_of_records_report(output_path : Path, institutions : list[str], fields : list[str], institution_names : list[str] = None):
     if institution_names is None:
@@ -190,18 +192,31 @@ def exclude_countries(country_uni_dict : dict, countries_to_exclude : list[str])
     for country in countries_to_exclude:
         del country_uni_dict[country]
 
-
+#USAGE: Use get_ids_names_mapping_from_file, passing a path to file and optionally a maximum number of institutions per 
+# country to read a preprocessed json file with institutions and obtain a list of ids, names, and a 
+# institution-to-country mapping
+#
+# pass the output path, a list of institution ids and a list of fields, and optionally a list of institution names for better
+# report readability to generate_numbers_of_records_report to get a report on the number of paper in each institution
+# and in total, seperated for each field
+#
+# pass a list of institution ids, a list of fields, valid scopus key, and optionally a institution-to-country mapping
+#and a list of institution names for better readability, to download paper data from scopus and save them in the data
+#directory (if mapping is provided, data files will be split in directiories based on countries)
 
 if __name__ == "__main__":
 
 
-    fields = ["econ"]
-    unis = read_unis_file_group_by_countries("preliminary_tests/best_affils_for_top_unis_01-17-42_transformed.json", n=3)
-    institutions, names, mapping = process_entries(unis)
+    fields = ["econ", "psyc", "busi", "phar"]
+    institutions, names, mapping = get_ids_names_mapping_from_file("preliminary_tests/best_affils_for_top_unis_01-17-42_transformed.json")
 
-    save_by_institutions_and_fields(institutions, fields , SCOPUS_KEY, country_mapping=mapping, institution_names=names)
+    with open("mapping.json", "w") as file:
+        json.dump(mapping, file)
+    print(mapping)
 
-    # number_of_records_file_path = Path(__file__).parent / "data" / "test_report.txt"
-    # generate_numbers_of_records_report(number_of_records_file_path, institutions, fields, names)
+    #save_by_institutions_and_fields(institutions, fields , SCOPUS_KEY, country_mapping=mapping, institution_names=names)
+
+    #number_of_records_file_path = Path(__file__).parent / "data" / "test_report_v2.txt"
+    #generate_numbers_of_records_report(number_of_records_file_path, institutions, fields, names)
     pass
 

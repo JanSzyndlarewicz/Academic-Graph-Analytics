@@ -1,7 +1,9 @@
 import os
 import re
+import pandas as pd
 
 from config import PAPERS_FIELDS_MAPPING
+from data_retrival.neo4j.neo4j_connector import Neo4JConnector
 from data_retrival.neo4j.node_pull import UniDataCollector
 from data_retrival.neo4j.scholar_citations import SemanticScholarCitationsBatchProcessor
 from data_retrival.neo4j.semantic_scholar_papers import ScopusPapersBatchProcessor
@@ -210,5 +212,33 @@ def node_pull():
     # print(nodes)
 
 if __name__ == "__main__":
-    main()
-    node_pull()
+    # main()
+    # node_pull()
+
+    conn = Neo4JConnector()
+    query = r"""match (n:Country {bucket:"2025"})<-[e:COUNTRY_CITED_BY]-(k:Country)
+               return n.name as Citing, k.name as Cited, e.weight as Count"""
+    result = conn.run_query(query)
+    result = pd.DataFrame(result)
+    sums = result.groupby("Citing")[["Count"]].sum()
+    result["Proportion"] = result.apply(lambda x : x["Count"] / sums.loc[x["Citing"]], axis=1)
+    print(result)
+
+    conn = Neo4JConnector()
+    query = r"""match (n:Country {bucket:"2025"})
+                with n.name as name
+                match (n:Paper) where name in n.countries
+                with name, count(distinct n) as papers
+                match (n:Paper)-[e:CITED_BY]->(k:Paper)
+                where name in n.countries and not name in k.countries and Date(k.publication_date) < Date("2025-01-01")
+                return name as Country, papers as Papers, count(e) as Foreign_citations, count(e) * 1.0 / papers as Ratio"""
+    result = conn.run_query(query)
+    result = pd.DataFrame(result)
+    print(result)
+
+    # alternate query if you already counted the papers in countries
+
+    # match (n:Country {bucket : "2025"})-[e:COUNTRY_CITED_BY]->(k:Country)
+    # where n <> k
+    # with n, sum(e.weight) as sum
+    # return n.name, sum, n.papers, sum * 1.0 / n.papers

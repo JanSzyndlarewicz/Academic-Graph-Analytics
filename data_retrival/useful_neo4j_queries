@@ -117,11 +117,16 @@ ON CREATE SET r.weight = 1
 ON MATCH SET r.weight = r.weight + 1
 
 -----------------------------------------------
-
 Calculate and assign normalized weights
-match (n:Country)-[e]->()
+
+match (n:Country)-[e:COUNTRY_CITED_BY]->()
 with n,sum(e.weight) as outdegree
-match (n)-[e]->(k:Country)
+match (n)-[e:COUNTRY_CITED_BY]->(k:Country)
+set e.normalized_weight = e.weight * 1.0 / outdegree
+
+match (n:Country)-[e:COUNTRY_CITES]->()
+with n,sum(e.weight) as outdegree
+match (n)-[e:COUNTRY_CITES]->(k:Country)
 set e.normalized_weight = e.weight * 1.0 / outdegree
 
 -----------------------------------------------
@@ -197,16 +202,27 @@ UNWIND base_countries AS base_country
 UNWIND cited_countries AS cited_country
 MERGE (bc:Country {name: base_country, bucket: year})
 MERGE (cc:Country {name: cited_country, bucket: year})
-MERGE (bc)-[r:CITED_BY]->(cc)
+MERGE (bc)-[r:COUNTRY_CITED_BY]->(cc)
 ON CREATE SET r.weight = 1
 ON MATCH SET r.weight = r.weight + 1
+MERGE (cc)-[s:COUNTRY_CITES]->(bc)
+ON CREATE SET s.weight = 1
+ON MATCH SET s.weight = r.weight + 1
 
 with ["2020", "2021", "2022", "2023", "2024", "2025"] as years
 unwind years as year
-match (n:Country {bucket:year})-[e]->(:Country{name:"Russia"})
+match (n:Country {bucket:year})-[e:COUNTRY_CITES]->(:Country{name:"Russia"})
+return n.name, year, e.normalized_weight
+order by n.name
+
+with ["2020", "2021", "2022", "2023", "2024", "2025"] as years
+unwind years as year
+match (n:Country {bucket:year})-[e:COUNTRY_CITES]->(n)
 return n.name, year, e.normalized_weight
 
+-----------------------------------------------
 Get country connections between papers published in specific timespan
+
 MATCH (cited:Paper)-[:CITED_BY]->(base:Paper)
 WHERE DATE(base.publication_date) < DATE("2020-01-01") AND DATE(base.publication_date) > DATE("2019-01-01")
 WITH base.countries AS base_countries, cited.countries AS cited_countries
@@ -218,3 +234,11 @@ MERGE (bc)-[r:COUNTRY_CITED_BY]->(cc)
 ON CREATE SET r.weight = 1
 ON MATCH SET r.weight = r.weight + 1
 
+-----------------------------------------------
+Create reverse connections
+
+match (n:Paper)-[e:CITED_BY]->(k:Paper)
+create (k)-[:CITES]->(n)
+
+match (n:Country)-[e:COUNTRY_CITED_BY]->(k:Country)
+create (k)-[:COUNTRY_CITES {weight:e.weight}]->(n)

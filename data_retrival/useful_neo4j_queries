@@ -209,11 +209,15 @@ MERGE (cc)-[s:COUNTRY_CITES]->(bc)
 ON CREATE SET s.weight = 1
 ON MATCH SET s.weight = r.weight + 1
 
+Get fractions for each country how much did that country cite russia
+
 with ["2020", "2021", "2022", "2023", "2024", "2025"] as years
 unwind years as year
 match (n:Country {bucket:year})-[e:COUNTRY_CITES]->(:Country{name:"Russia"})
 return n.name, year, e.normalized_weight
 order by n.name
+
+Get fractions for each country how much that country cited itself
 
 with ["2020", "2021", "2022", "2023", "2024", "2025"] as years
 unwind years as year

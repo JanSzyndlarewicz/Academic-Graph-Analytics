@@ -299,28 +299,46 @@ if __name__ == "__main__":
     
     df = (get_citation_fractions_years(conn,2010,2025))
 
+    data = df[(df["Citing"] == df["Cited"])]
+    sns.lineplot(data, x="Year", y="Proportion", hue="Citing").set(title=f"Proportions of self-citations")
+    os.makedirs("plots/self_proportion",exist_ok=True)
+    plt.savefig(f"plots/self_proportion/self_proportions.jpg")
+    #plt.show()
+
+    data = df[(df["Cited"] == "Russia") & (df["Citing"] != "Russia")]
+    sns.lineplot(data, x="Year", y="Proportion", hue="Citing").set(title=f"Proportions of citations to Russia")
+    os.makedirs("plots/self_proportion",exist_ok=True)
+    plt.savefig(f"plots/russia_proportion/russia_proportions.jpg")
+    #plt.show()
+
     for country in df["Citing"].unique():
         data = df[(df["Citing"] == country) & (df["Cited"] == country)]
         sns.lineplot(data, x="Year", y="Proportion").set(title=f"{country}-{country}")
         os.makedirs("plots/self_proportion",exist_ok=True)
         plt.savefig(f"plots/self_proportion/{country}_self_proportion.jpg")
-        plt.show()
+        #plt.show()
     
     for country in df["Citing"].unique():
         data = df[(df["Citing"] == country) & (df["Cited"] == "Russia")]
         sns.lineplot(data, x="Year", y="Proportion").set(title=f"{country}-Russia")
         os.makedirs("plots/russia_proportion",exist_ok=True)
         plt.savefig(f"plots/russia_proportion/{country}_russia_proportion.jpg")
-        plt.show()
+        #plt.show()
 
     df = get_foreign_citation_per_paper_ratio_years(conn, 2010, 2025)
+
+    data = df
+    sns.lineplot(data, x="Year", y="Ratio", hue="Country").set(title=f"Foreign citations to papers ratio.")
+    os.makedirs("plots/self_proportion",exist_ok=True)
+    plt.savefig(f"plots/citation_to_paper_ratio/foregin_citations_to_paper_ratios.jpg")
+    #plt.show()
 
     for country in df["Country"].unique():
         data = df[df["Country"] == country]
         sns.lineplot(data, x="Year", y="Ratio").set(title=f"{country} - foreing citations to papers ratio")
         os.makedirs("plots/citation_to_paper_ratio",exist_ok=True)
         plt.savefig(f"plots/citation_to_paper_ratio/{country}_foreign_citations_to_papers_ratio.jpg")
-        plt.show()
+        #plt.show()
 
     
 

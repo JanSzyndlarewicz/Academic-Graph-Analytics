@@ -19,13 +19,20 @@ SEMANTIC_SCHOLAR_PAPERS_DATASET_NAME = "papers"
 # Data configuration
 DATA_FOLDER_NAME = "data"
 
+PAPERS_FIELDS_MAPPING = {
+    "busi": "business",
+    "econ": "economics",
+    "phar": "pharmacy",
+    "phys": "physics",
+}
+
 # Neo4j configuration
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = os.getenv("NEO4J_USER")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 
 NEO4J_BATCH_SIZE = 10
-NEO4J_MAX_WORKERS = 4
+NEO4J_MAX_WORKERS = 12
 NEO4J_MAX_TRANSACTION_RETRY_TIME = 10
 
 # Logger configuration

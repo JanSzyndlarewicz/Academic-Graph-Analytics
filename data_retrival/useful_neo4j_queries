@@ -19,9 +19,15 @@ MATCH (n) DETACH DELETE n
 
 -----------------------------------------------
 
+Delete all nodes of a specific label
+MATCH (n:LabelName) DETACH DELETE n
+
+-----------------------------------------------
+
+
 Creating graph of countries
 
-MATCH (base:Paper)-[:CITES]->(cited:Paper)
+MATCH (base:Paper)-[:CITED_BY]->(cited:Paper)
 WITH base.countries AS base_countries, cited.countries AS cited_countries
 UNWIND base_countries AS base_country
 UNWIND cited_countries AS cited_country
@@ -29,13 +35,35 @@ WITH base_country, cited_country, COUNT(*) AS citation_count
 RETURN base_country, cited_country, citation_count
 ORDER BY citation_count DESC
 
-MATCH (base:Paper)-[:CITES]->(cited:Paper)
+MATCH (base:Paper)-[:CITED_BY]->(cited:Paper)
 WITH base.countries AS base_countries, cited.countries AS cited_countries
 UNWIND base_countries AS base_country
 UNWIND cited_countries AS cited_country
 MERGE (bc:Country {name: base_country})
 MERGE (cc:Country {name: cited_country})
-MERGE (bc)-[r:CITED_BY]->(cc)
+MERGE (bc)-[r:COUNTRY_CITED_BY]->(cc)
+ON CREATE SET r.weight = 1
+ON MATCH SET r.weight = r.weight + 1
+
+-----------------------------------------------
+
+Creating graph of unis
+
+MATCH (base:Paper)-[:CITED_BY]->(cited:Paper)
+WITH base.universities AS base_universities, cited.universities AS cited_universities
+UNWIND base_universities AS base_university
+UNWIND cited_universities AS cited_university
+WITH base_university, cited_university, COUNT(*) AS citation_count
+RETURN base_university, cited_university, citation_count
+ORDER BY citation_count DESC
+
+MATCH (base:Paper)-[:CITED_BY]->(cited:Paper)
+WITH base.universities AS base_universities, cited.universities AS cited_universities
+UNWIND base_universities AS base_university
+UNWIND cited_universities AS cited_university
+MERGE (bc:University {name: base_university})
+MERGE (cc:University {name: cited_university})
+MERGE (bc)-[r:UNIVERSITY_CITED_BY]->(cc)
 ON CREATE SET r.weight = 1
 ON MATCH SET r.weight = r.weight + 1
 
@@ -177,3 +205,16 @@ with ["2020", "2021", "2022", "2023", "2024", "2025"] as years
 unwind years as year
 match (n:Country {bucket:year})-[e]->(:Country{name:"Russia"})
 return n.name, year, e.normalized_weight
+
+Get country connections between papers published in specific timespan
+MATCH (cited:Paper)-[:CITED_BY]->(base:Paper)
+WHERE DATE(base.publication_date) < DATE("2020-01-01") AND DATE(base.publication_date) > DATE("2019-01-01")
+WITH base.countries AS base_countries, cited.countries AS cited_countries
+UNWIND base_countries AS base_country
+UNWIND cited_countries AS cited_country
+MERGE (bc:Country_2019 {name: base_country})
+MERGE (cc:Country_2019 {name: cited_country})
+MERGE (bc)-[r:COUNTRY_CITED_BY]->(cc)
+ON CREATE SET r.weight = 1
+ON MATCH SET r.weight = r.weight + 1
+

@@ -1,6 +1,7 @@
 import os
 import re
 
+from config import PAPERS_FIELDS_MAPPING
 from data_retrival.neo4j.scholar_citations import SemanticScholarCitationsBatchProcessor
 from data_retrival.neo4j.semantic_scholar_papers import ScopusPapersBatchProcessor
 from data_retrival.semantic_scholar.papers_handler import process_and_save_chunks
@@ -43,15 +44,17 @@ def assign_countries_to_papers(scopus_papers_dataset_path):
 
 
 def extract_university_info(file_name, dataset_mapping):
-    match = re.match(r"(\d+)-econ\.jsonl", file_name)
+    match = re.match(r"(\d+)-\w+\.jsonl", file_name)
     university_id = match.group(1) if match else "Unknown"
     university_name = dataset_mapping.get(university_id, "Unknown")
     return university_id, university_name
 
 
-def process_papers_in_file(file_path, field, dataset_mapping):
+def process_papers_in_file(file_path, dataset_mapping):
     country = os.path.basename(os.path.dirname(file_path))
     file_name = os.path.basename(file_path).split("_")[0]
+    field_id = os.path.basename(file_path).split("-")[1].split(".")[0]
+    field = PAPERS_FIELDS_MAPPING.get(field_id, field_id)
     _, university_name = extract_university_info(file_name, dataset_mapping)
 
     papers = []
@@ -72,19 +75,19 @@ def enrich_paper_data(paper, field, country, university):
     }
 
 
-def assign_fields_to_papers(scopus_papers_dataset_path, field, mapping_file_path="data/dataset_mapping.txt"):
+def assign_fields_to_papers(scopus_papers_dataset_path, mapping_file_path="data/dataset_mapping.txt"):
     dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
     dataset_mapping = load_dataset_mapping(mapping_file_path)
 
     for path in dataset_paths:
-        process_papers_in_file(path, field, dataset_mapping)
+        process_papers_in_file(path, dataset_mapping)
 
 
 def upload_papers_to_neo4j(scopus_papers_dataset_path):
     scopus_papers_batch_processor = ScopusPapersBatchProcessor()
 
     dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
-
+    print(dataset_paths)
     for path in dataset_paths:
         scopus_papers_batch_processor.process_file(path)
 
@@ -172,25 +175,29 @@ def main():
     Just open Neo4j browser and run the following query: CREATE INDEX FOR (p:Paper) ON (p.id)
     Once you will have some interesting queries you can place them in useful_neo4j_queries.txt.
     """
+    # # old paths
+    # scopus_papers_dataset_path = "data/econ_data_top3/"
+    # scholar_citations_dataset_path = "data/scholar_citations/"
+    # unique_citations_path = "data/unique_citations/"
 
     # Those links should fit the paths of the datasets taken from our google drive
-    scopus_papers_dataset_path = "data/econ_data_top3/"
-    scholar_citations_dataset_path = "data/scholar_citations/"
-    unique_citations_path = "data/unique_citations/"
-    field = "economics"
-
+    scopus_papers_dataset_path = "data/data_top10/"
+    scholar_citations_dataset_path = "data/data_top10_citations/"
+    unique_citations_path = "data/data_top10_unique_citations/"
+    
+    
     # Part to skip once you have the data from our google drive
     # download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path)
     #
     # Adding additional information to the papers
-    #assign_fields_to_papers(scopus_papers_dataset_path, field)
+    # assign_fields_to_papers(scopus_papers_dataset_path)
     #
     # Uploading the papers to neo4j
-    #upload_papers_to_neo4j(scopus_papers_dataset_path)
+    # upload_papers_to_neo4j(scopus_papers_dataset_path)
     #
     # Creating a file with unique citations that are only between papers in our dataset
     # We dont want to have citations to papers that are not in our dataset
-    #prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
+    # prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
     #
     # Uploading the unique citations to neo4j
     upload_citations_to_neo4j(unique_citations_path)

@@ -247,11 +247,10 @@ if __name__ == "__main__":
     metrics = ["closeness_top", "degree_top", "pagerank_top", "articlerank_top", "louvain_top", "approxBetweenness_top"]
     metrics = ["pagerank_top"]
     fields = ["countries", "universities", "field"]
-    # # papers_pull.pull(limit=1000)
+
     for metric in metrics:
         for field in fields:
             papers_pull.visualise(picked_metric=metric, for_type=field)
-    # papers_pull.pull(limit=1000)
     papers_pull.visualise(
         # picked_metric="articlerank_top",
         # picked_cols=[ "Russian Federation"],

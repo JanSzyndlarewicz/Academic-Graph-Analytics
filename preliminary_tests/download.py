@@ -1,12 +1,10 @@
 import json
 import jsonlines
 import logging
-import os
 from pathlib import Path
 import requests
 import sys
 import urllib.parse
-
 
 from config import PAPER_SEARCH_URL, SAFETY_LIMIT, SCOPUS_KEY
 
@@ -54,7 +52,6 @@ def save_entries_to_jsonlines(json_response, output_path):
 def get_from_api(url):
     logger.info(f"Querying {url}")
     res = requests.get(url)
-    #print("Querying " + res.url)
     if res.status_code == 200:
         logger.info(f"Query {url} succesfull!")
         return res.json()
@@ -64,7 +61,6 @@ def get_from_api(url):
 
 def get_next_url(json_response, expected_entries : int) -> str | None:
     if ("entry" not in json_response['search-results']) or (len(json_response['search-results']['entry']) < expected_entries):
-
         return None
     for link in json_response["search-results"]["link"]:
         if link["@ref"] == "next":
@@ -126,7 +122,6 @@ def save_by_institutions_and_fields(institutions : list[str], fields : list[str]
                 save_all_entries(output_path, query=query, subj=field, apiKey=apiKey)
             else:
                 logger.info(f"Data for institution {name} and field {field}, output file: {output_path} already exists; skipping")
-
 
 def read_unis_file_group_by_countries(path, n=None) -> dict:
     with open(path, "r") as file:
@@ -190,18 +185,14 @@ def exclude_countries(country_uni_dict : dict, countries_to_exclude : list[str])
     for country in countries_to_exclude:
         del country_uni_dict[country]
 
-
-
 if __name__ == "__main__":
 
-
     fields = ["econ"]
-    unis = read_unis_file_group_by_countries("preliminary_tests/best_affils_for_top_unis_01-17-42_transformed.json", n=3)
+    unis = read_unis_file_group_by_countries("preliminary_tests/best_affils_for_top_unis_06-02-13_transformed.json", n=3)
     institutions, names, mapping = process_entries(unis)
-
-    save_by_institutions_and_fields(institutions, fields , SCOPUS_KEY, country_mapping=mapping, institution_names=names)
 
     # number_of_records_file_path = Path(__file__).parent / "data" / "test_report.txt"
     # generate_numbers_of_records_report(number_of_records_file_path, institutions, fields, names)
-    pass
+
+    save_by_institutions_and_fields(institutions, fields , SCOPUS_KEY, country_mapping=mapping, institution_names=names)
 

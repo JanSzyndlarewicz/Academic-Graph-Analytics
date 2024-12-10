@@ -269,7 +269,7 @@ MATCH (n:Country) SET n.papers = 0
 with ["2020", "2021", "2022", "2023", "2024", "2025"] as years
 unwind years as year
 MATCH (n:Paper)
-WHERE DATE(n.publication_date) < DATE(year+"-01-01")
+WHERE DATE(n.publication_date) < DATE(year+"-12-31")
 with n.countries as countries
 unwind countries as country
 MATCH (c:Country {name: country, bucket: year})

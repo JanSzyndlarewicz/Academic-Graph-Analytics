@@ -113,3 +113,19 @@ MERGE (cc:University_2019 {name: cited_university})
 MERGE (bc)-[r:UNIVERSITY_CITED_BY]->(cc)
 ON CREATE SET r.weight = 1
 ON MATCH SET r.weight = r.weight + 1
+
+
+-----------------------------------------------
+
+CREATE INDEX FOR (p:Paper_2010) ON (p.id);
+
+// Run the query
+MATCH (cited:Paper)-[orig:CITED_BY]->(base:Paper)
+WHERE DATE(base.publication_date) < DATE("2011-01-01")
+WITH cited, orig, base LIMIT 1000  // Process in batches
+MERGE (bc:Paper_2010 {id: base.id})
+SET bc.title = base.title, bc.publication_date = base.publication_date  // Copy only needed properties
+MERGE (cc:Paper_2010 {id: cited.id})
+SET cc.title = cited.title, cc.publication_date = cited.publication_date
+MERGE (cc)-[r:CITED_BY]->(bc)
+SET r.type = orig.type;  // Copy specific relationship properties

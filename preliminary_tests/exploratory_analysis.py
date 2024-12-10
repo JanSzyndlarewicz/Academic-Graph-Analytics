@@ -3,7 +3,6 @@ import json
 import jsonlines
 
 
-
 def test_field_presence(fields, file_path):
     for field_name in fields:
         i = 0
@@ -18,7 +17,8 @@ def test_field_presence(fields, file_path):
         print(f"Field  {field_name} present in  {100 * i / j:.2f}% records.")
 
 
-fields = ["prism:doi", "prism:coverDate"]
-#test_field_presence(fields, 'test_batch.jsonl')
-test_field_presence(fields, '60021331-econ-batch.jsonl')
+if __name__ == "__main__":
 
+    fields = ["prism:doi", "prism:coverDate"]
+    # test_field_presence(fields, 'test_batch.jsonl')
+    test_field_presence(fields, "60021331-econ-batch.jsonl")

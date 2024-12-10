@@ -92,7 +92,7 @@ def upload_papers_to_neo4j(scopus_papers_dataset_path):
     scopus_papers_batch_processor = ScopusPapersBatchProcessor()
 
     dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
-
+    print(dataset_paths)
     for path in dataset_paths:
         scopus_papers_batch_processor.process_file(path)
 
@@ -180,12 +180,17 @@ def main():
     Just open Neo4j browser and run the following query: CREATE INDEX FOR (p:Paper) ON (p.id)
     Once you will have some interesting queries you can place them in useful_neo4j_queries.txt.
     """
+    # # old paths
+    # scopus_papers_dataset_path = "data/econ_data_top3/"
+    # scholar_citations_dataset_path = "data/scholar_citations/"
+    # unique_citations_path = "data/unique_citations/"
 
     # Those links should fit the paths of the datasets taken from our google drive
     scopus_papers_dataset_path = "data/data_top10/"
     scholar_citations_dataset_path = "data/data_top10_citations/"
     unique_citations_path = "data/data_top10_unique_citations/"
-
+    
+    
     # Part to skip once you have the data from our google drive
     # download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path)
     #
@@ -200,7 +205,7 @@ def main():
     # prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
     #
     # Uploading the unique citations to neo4j
-    # upload_citations_to_neo4j(unique_citations_path)
+    upload_citations_to_neo4j(unique_citations_path)
 
 def node_pull():
     from data_retrival.neo4j.node_pull import NodePull

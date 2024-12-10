@@ -81,18 +81,16 @@ def save_all_entries(output_path, **params):
     logger.info(f"Beginning a query series, parameters {params}")
 
     url = PAPER_SEARCH_URL + "?" + urllib.parse.urlencode(params)
-    not_done = True
     i = 0
-    while not_done:
+    while url is not None:
         j = get_from_api(url)
         if j is None:
             logger.warning(f"Query failed, query series aborted.")
             break
-        not_done = save_entries_to_jsonlines(j, output_path)
+        save_entries_to_jsonlines(j, output_path)
         url = get_next_url(j, int(params["count"]))
         if url is None:
             logger.info(f"Query series finished.")
-            not_done = False
 
         # this is just because I am paranoid that I will accidentally create an infite loop and burn all my requests
         # set SAFETY_LIMIT to whatever you feel is reasonable or just get rid of this clause if you know what you are doing
@@ -143,7 +141,11 @@ def process_entries(country_uni_dict) -> tuple[list[str], list[str], dict[str,st
     for country,unis in country_uni_dict.items():
         for uni in unis:
             mapping[uni['id']] = country
+    logger.info(f"Processed university list, returning {len(institutions)} institutions.")
     return institutions, names, mapping
+
+def get_ids_names_mapping_from_file(path, n : int =None) -> tuple[list[str], list[str], dict[str,str]]:
+    return process_entries(read_unis_file_group_by_countries(path,n))
 
 def generate_numbers_of_records_report(output_path : Path, institutions : list[str], fields : list[str], institution_names : list[str] = None):
     if institution_names is None:

@@ -239,6 +239,97 @@ ON CREATE SET r.weight = 1
 ON MATCH SET r.weight = r.weight + 1
 
 -----------------------------------------------
+
+Get university connections between papers published in specific timespan
+MATCH (cited:Paper)-[:CITED_BY]->(base:Paper)
+WHERE DATE(base.publication_date) < DATE("2020-01-01") AND DATE(base.publication_date) > DATE("2019-01-01")
+WITH base.universities AS base_universities, cited.universities AS cited_universities
+UNWIND base_universities AS base_university
+UNWIND cited_universities AS cited_university
+MERGE (bc:University_2019 {name: base_university})
+MERGE (cc:University_2019 {name: cited_university})
+MERGE (bc)-[r:UNIVERSITY_CITED_BY]->(cc)
+ON CREATE SET r.weight = 1
+ON MATCH SET r.weight = r.weight + 1
+
+-----------------------------------------------
+
+Create a graph of countries with citations only up to a particular date
+Replace the date with the limit of your time period and Y1 with a descriptive label
+MATCH (base:Paper)-[:CITES]->(cited:Paper)
+WHERE DATE(base.publication_date) < DATE("2022-01-01")
+WITH base.countries AS base_countries, cited.countries AS cited_countries
+UNWIND base_countries AS base_country
+UNWIND cited_countries AS cited_country
+MERGE (bc:Country_2022 {name: base_country})
+MERGE (cc:Country_2022 {name: cited_country})
+MERGE (bc)-[r:CITED_BY]->(cc)
+ON CREATE SET r.weight = 1
+ON MATCH SET r.weight = r.weight + 1
+
+-----------------------------------------------
+Calculate and assign normalized weights
+
+match (n:Country)-[e:COUNTRY_CITED_BY]->()
+with n,sum(e.weight) as outdegree
+match (n)-[e:COUNTRY_CITED_BY]->(k:Country)
+set e.normalized_weight = e.weight * 1.0 / outdegree
+
+match (n:Country)-[e:COUNTRY_CITES]->()
+with n,sum(e.weight) as outdegree
+match (n)-[e:COUNTRY_CITES]->(k:Country)
+set e.normalized_weight = e.weight * 1.0 / outdegree
+
+-----------------------------------------------
+Splitting the graph based on year using properties instead of labels
+
+with ["2020", "2021", "2022", "2023", "2024", "2025"] as years
+unwind years as year
+MATCH (base:Paper)<-[:CITED_BY]-(cited:Paper)
+WHERE DATE(base.publication_date) < DATE(year+"-01-01")
+WITH year, base.countries AS base_countries, cited.countries AS cited_countries
+UNWIND base_countries AS base_country
+UNWIND cited_countries AS cited_country
+MERGE (bc:Country {name: base_country, bucket: year})
+MERGE (cc:Country {name: cited_country, bucket: year})
+MERGE (bc)-[r:COUNTRY_CITES]->(cc)
+ON CREATE SET r.weight = 1
+ON MATCH SET r.weight = r.weight + 1
+MERGE (cc)-[s:COUNTRY_CITED_BY]->(bc)
+ON CREATE SET s.weight = 1
+ON MATCH SET s.weight = r.weight + 1
+
+Get fractions for each country how much did that country cite russia
+
+with ["2020", "2021", "2022", "2023", "2024", "2025"] as years
+unwind years as year
+match (n:Country {bucket:year})-[e:COUNTRY_CITES]->(:Country{name:"Russia"})
+return n.name, year, e.normalized_weight
+order by n.name
+
+Get fractions for each country how much that country cited itself
+
+with ["2020", "2021", "2022", "2023", "2024", "2025"] as years
+unwind years as year
+match (n:Country {bucket:year})-[e:COUNTRY_CITES]->(n)
+return n.name, year, e.normalized_weight
+
+-----------------------------------------------
+Get country connections between papers published in specific timespan
+
+MATCH (cited:Paper)-[:CITED_BY]->(base:Paper)
+WHERE DATE(base.publication_date) < DATE("2020-01-01") AND DATE(base.publication_date) > DATE("2019-01-01")
+WITH base.countries AS base_countries, cited.countries AS cited_countries
+UNWIND base_countries AS base_country
+UNWIND cited_countries AS cited_country
+MERGE (bc:Country_2019 {name: base_country})
+MERGE (cc:Country_2019 {name: cited_country})
+MERGE (bc)-[r:COUNTRY_CITED_BY]->(cc)
+ON CREATE SET r.weight = 1
+ON MATCH SET r.weight = r.weight + 1
+
+-----------------------------------------------
+
 Create reverse connections
 
 match (n:Paper)-[e:CITED_BY]->(k:Paper)
@@ -246,3 +337,18 @@ create (k)-[:CITES]->(n)
 
 match (n:Country)-[e:COUNTRY_CITED_BY]->(k:Country)
 create (k)-[:COUNTRY_CITES {weight:e.weight}]->(n)
+
+-----------------------------------------------
+Add number of papers to countries
+
+
+MATCH (n:Country) SET n.papers = 0
+
+with ["2020", "2021", "2022", "2023", "2024", "2025"] as years
+unwind years as year
+MATCH (n:Paper)
+WHERE DATE(n.publication_date) < DATE(year+"-12-31")
+with n.countries as countries
+unwind countries as country
+MATCH (c:Country {name: country, bucket: year})
+SET c.papers = c.papers + 1

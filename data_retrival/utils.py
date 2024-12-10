@@ -114,3 +114,4 @@ def save_citations_to_files(citations_among_dataset, output_dir, chunk_size):
         with open(file_path, "w") as f:
             for citation in chunk:
                 f.write(json.dumps(citation) + "\n")
+

@@ -243,9 +243,7 @@ if __name__ == "__main__":
     # main()
     # node_pull()
     papers_pull = PaperDataCollector(range=(2000, 2023))
-    # papers_pull.make_time_series_analysis_subgraphs_papers()
-    # DONT USE
-    # papers_pull.fill_with_pagerank()
+
     metrics = ["closeness_top", "degree_top", "pagerank_top", "articlerank_top", "louvain_top", "approxBetweenness_top"]
     metrics = ["pagerank_top"]
     fields = ["countries", "universities", "field"]

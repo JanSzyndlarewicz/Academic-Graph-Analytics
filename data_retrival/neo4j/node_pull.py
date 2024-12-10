@@ -2,6 +2,77 @@ from matplotlib import pyplot as plt
 from data_retrival.neo4j.neo4j_connector import Neo4JConnector
 import pandas as pd
 
+econ_uni2country = {
+    "Harvard University": "United States",
+    "Stanford University": "United States",
+    "The University of Chicago": "United States",
+    "University of Oxford": "United Kingdom",
+    "University of Cambridge": "United Kingdom",
+    "Imperial College London": "United Kingdom",
+    "Technische Universität München": "Germany",
+    "Universität Heidelberg": "Germany",
+    "Humboldt-Universität zu Berlin": "Germany",
+    "Sorbonne Université": "France",
+    "École Normale Supérieure": "France",
+    "École Polytechnique Fédérale de Lausanne": "France",
+    "Tsinghua University": "China",
+    "Peking University": "China",
+    "Fudan University": "China",
+    "University of Toronto": "Canada",
+    "Université McGill": "Canada",
+    "The University of British Columbia": "Canada",
+    "The University of Tokyo": "Japan",
+    "Kyoto University": "Japan",
+    "Osaka University": "Japan",
+    "The Australian National University": "Australia",
+    "University of Melbourne": "Australia",
+    "The University of Sydney": "Australia",
+    "ETH Zürich": "Switzerland",
+    "Universität Zürich": "Switzerland",
+    "Université de Genève": "Switzerland",
+    "Universiteit van Amsterdam": "Netherlands",
+    "Delft University of Technology": "Netherlands",
+    "Universiteit Leiden": "Netherlands",
+    "Karolinska Institutet": "Sweden",
+    "Lunds Universitet": "Sweden",
+    "Stockholms universitet": "Sweden",
+    "Seoul National University": "South Korea",
+    "Yonsei University": "South Korea",
+    "Sungkyunkwan University": "South Korea",
+    "Helsingin Yliopisto": "Finland",
+    "Aalto University": "Finland",
+    "Turun yliopisto": "Finland",
+    "National University of Singapore": "Singapore",
+    "Nanyang Technological University": "Singapore",
+    "Singapore Management University": "Singapore",
+    "Københavns Universitet": "Denmark",
+    "Aarhus Universitet": "Denmark",
+    "Technical University of Denmark": "Denmark",
+    "KU Leuven": "Belgium",
+    "Universiteit Gent": "Belgium",
+    "Université de Liège": "Belgium",
+    "Hebrew University of Jerusalem": "Israel",
+    "Weizmann Institute of Science Israel": "Israel",
+    "Tel Aviv University": "Israel",
+    "Weizmann Institute of Science": "Israel",
+    "Indian Institute of Science": "India",
+    "University of Delhi": "India",
+    "Jawaharlal Nehru University": "India",
+    "Alma Mater Studiorum Università di Bologna": "Italy",
+    "Sapienza Università di Roma": "Italy",
+    "Politecnico di Milano": "Italy",
+    "Universitat de Barcelona": "Spain",
+    "Universidad Autónoma de Madrid": "Spain",
+    "Universidad Complutense de Madrid": "Spain",
+    "Lomonosov Moscow State University": "Russia",
+    "Saint Petersburg State University": "Russia",
+    "Novosibirsk State University": "Russia",
+    "University of Warsaw": "Poland",
+    "Uniwersytet Jagielloński": "Poland",
+    "Politechnika Warszawska": "Poland"
+}
+
+
 class NodePull(Neo4JConnector):
     def __init__(self, type):
         super().__init__()
@@ -68,77 +139,77 @@ class UniDataCollector():
             if field_filter is None:           
                 self.node_pull.run_query(
                     f"""
-                    MATCH (base:Paper)-[:CITES]->(cited:Paper)
-                    WHERE DATE(base.publication_date) < DATE("{str(i+1)}-01-01") AND DATE(base.publication_date) >= DATE("{str(i)}-01-01")
-                    WITH base.universities AS base_universities, cited.universities AS cited_universities,
-                    base.countries AS base_country, cited.countries AS cited_country
-                    UNWIND base_universities AS base_university
-                    UNWIND cited_universities AS cited_university
-                    MERGE (bc:University_{str(i)} {{name: base_university, country: base_country}})
-                    MERGE (cc:University_{str(i)} {{name: cited_university, country: cited_country}})
-                    MERGE (bc)-[r:UNIVERSITY_CITES]->(cc)
-                    ON CREATE SET r.weight = 1
-                    ON MATCH SET r.weight = r.weight + 1
-                    """
+                MATCH (base:Paper)-[:CITES]->(cited:Paper)
+                WHERE DATE(base.publication_date) < DATE("{str(i+1)}-01-01") AND DATE(base.publication_date) >= DATE("{str(i)}-01-01")
+                WITH base.universities AS base_universities, cited.universities AS cited_universities
+                //base.countries AS base_country, cited.countries AS cited_country
+                UNWIND base_universities AS base_university
+                UNWIND cited_universities AS cited_university
+                MERGE (bc:University_{str(i)} {{name: base_university}})
+                MERGE (cc:University_{str(i)} {{name: cited_university}})
+                MERGE (bc)-[r:UNIVERSITY_CITES]->(cc)
+                ON CREATE SET r.weight = 1
+                ON MATCH SET r.weight = r.weight + 1
+                """
                 )
             else:
                 self.node_pull.run_query(
                     f"""
-                    MATCH (base:Paper)-[:CITES]->(cited:Paper)
-                    WHERE DATE(base.publication_date) < DATE("{str(i+1)}-01-01") AND DATE(base.publication_date) >= DATE("{str(i)}-01-01")
-                    AND base.field == {field_filter}
-                    WITH base.universities AS base_universities, cited.universities AS cited_universities,
-                    base.countries AS base_country, cited.countries AS cited_country
-                    UNWIND base_universities AS base_university
-                    UNWIND cited_universities AS cited_university
-                    MERGE (bc:University_{str(i)} {{name: base_university, country: base_country}})
-                    MERGE (cc:University_{str(i)} {{name: cited_university, country: cited_country}})
-                    MERGE (bc)-[r:UNIVERSITY_CITES]->(cc)
-                    ON CREATE SET r.weight = 1
-                    ON MATCH SET r.weight = r.weight + 1
-                    """
+                MATCH (base:Paper)-[:CITES]->(cited:Paper)
+                WHERE DATE(base.publication_date) < DATE("{str(i+1)}-01-01") AND DATE(base.publication_date) >= DATE("{str(i)}-01-01")
+                AND base.field = "{field_filter}"
+                WITH base.universities AS base_universities, cited.universities AS cited_universities
+                //base.countries AS base_country, cited.countries AS cited_country
+                UNWIND base_universities AS base_university
+                UNWIND cited_universities AS cited_university
+                MERGE (bc:University_{str(i)} {{name: base_university}})
+                MERGE (cc:University_{str(i)} {{name: cited_university}})
+                MERGE (bc)-[r:UNIVERSITY_CITES]->(cc)
+                ON CREATE SET r.weight = 1
+                ON MATCH SET r.weight = r.weight + 1
+                """
                 )
+            for uni, country in econ_uni2country.items():
+                r = self.node_pull.run_query(
+                    f"""
+                    MATCH (n:University_{str(i)})
+                    WHERE n.name = "{uni}" 
+                    SET n.countries = ["{country}"]
+            """)
                 
             
-    def drop_temporary_graph(self, type=None, for_range=False):
+    def drop_temporary_graph(self, type=None):
         if not type:
             type = self.node_pull.type
-        if for_range:
-            for i in range(self.range[0], self.range[1] + 1):
-                query_drop_graph = f"""
-                CALL gds.graph.drop('myGraph{str(type)}_{str(i)}')
-                """
-                self.node_pull.run_query(query=query_drop_graph)
-        else:
+    
+        for i in range(self.range[0], self.range[1] + 1):
             query_drop_graph = f"""
-                CALL gds.graph.drop('myGraph{str(type)}')
-                """
-            self.node_pull.run_query(query=query_drop_graph)
+            CALL gds.graph.drop('myGraph{str(type)}_{str(i)}')
+            """
+            try:
+                self.node_pull.run_query(query=query_drop_graph)
+            except Exception as e:
+                print(f"Error dropping graph for type {type}_{i}: {e}")
+
             
-            
-    def create_temporary_graph(self, type=None, for_range=False):
+    def create_temporary_graph(self, type=None):
         if not type:
             type = self.node_pull.type
-        if for_range:
-            for i in range(self.range[0], self.range[1] + 1):
-                query = f"""
-                CALL gds.graph.project(
-                'myGraph{str(type)}_{str(i)}',
-                '{str(type)}',
-                'UNIVERSITY_CITES',
-                {{ relationshipProperties: ['weight'] }}
-                )
-                """
-                self.node_pull.run_query(query=query)
-        else:
+
+        for i in range(self.range[0], self.range[1] + 1):
             query = f"""
-                CALL gds.graph.project(
-              'myGraph{str(type)}', 
-              '{str(type)}',  
-              'UNIVERSITY_CITES',  
-              {{ relationshipProperties: ['weight'] }}
-            )"""
-            self.node_pull.run_query(query=query)
+            CALL gds.graph.project(
+            'myGraph{str(type)}_{str(i)}',
+            '{str(type)}_{str(i)}',
+            'UNIVERSITY_CITES',
+            {{ relationshipProperties: ['weight'] }}
+            )
+            """
+            try:
+                self.node_pull.run_query(query=query)
+            except Exception as e:
+                print(f"Error creating temporary graph for type {type}_{i}: {e}")
+        
             
             
     def get_page_rank_from_temp_graphs(self, type=None):
@@ -153,7 +224,7 @@ class UniDataCollector():
           scaler: "MinMax"
         }})
         YIELD nodeId, score
-        RETURN gds.util.asNode(nodeId).name AS name, score, gds.util.asNode(nodeId).country AS country
+        RETURN gds.util.asNode(nodeId).name AS name, score, gds.util.asNode(nodeId).countries AS countries
         ORDER BY score DESC, name ASC
         
         
@@ -177,7 +248,7 @@ class UniDataCollector():
                 print(f"Error fetching nodes for type {scoped_type}: {e}")
                 continue
             
-            data = [(record[index_field], record['score'], record['country'][0])for record in result]
+            data = [(record[index_field], record['score'], record['countries'][0])for record in result]
             appended_df = pd.DataFrame(
                 {
                         i: [tup[1] for tup in data],                        
@@ -254,7 +325,7 @@ class UniDataCollector():
         plt.show()
         
         
-    def visualise_aggr_by_countries(self, df=None, bucketed=False, bucket_size=2, picked_countries=None):
+    def visualise_aggr_by_countries(self, df=None, bucketed=False, bucket_size=2, picked_countries=None, aggregated_for_countries=None):
             if df is None:
                 df = self.df
             # Transpose the DataFrame to make years the index
@@ -279,28 +350,33 @@ class UniDataCollector():
 
                 # Set the 'decade' as the new index
                 aggregated_df = aggregated_df.reset_index().set_index('decade')
+                
+            if aggregated_for_countries:
+                country_name = [col.split(' IN ')[-1] for col in df.columns]
 
-            country_name = [col.split(' IN ')[-1] for col in df.columns]
+                # Aggregate columns based on the last part of their names
+                grouped_data = {}
+                for i, part in enumerate(country_name):
+                    if part not in grouped_data:
+                        grouped_data[part] = []
+                    grouped_data[part].append(df.iloc[:, i])
 
-            # Aggregate columns based on the last part of their names
-            grouped_data = {}
-            for i, part in enumerate(country_name):
-                if part not in grouped_data:
-                    grouped_data[part] = []
-                grouped_data[part].append(df.iloc[:, i])
+                # Sum the columns in each group (you can use other aggregation methods)
+                aggregated_df = {}
+                for part, columns in grouped_data.items():
+                    aggregated_df[part] = pd.concat(columns, axis=1).sum(axis=1)
 
-            # Sum the columns in each group (you can use other aggregation methods)
-            aggregated_df = {}
-            for part, columns in grouped_data.items():
-                aggregated_df[part] = pd.concat(columns, axis=1).sum(axis=1)
-
-            # Convert to DataFrame
-            aggregated_df = pd.DataFrame(aggregated_df)
-            if picked_countries:
-                aggregated_df = aggregated_df.loc[:, picked_countries]
+                # Convert to DataFrame
+                df = pd.DataFrame(aggregated_df)
+                if picked_countries:
+                    df = df.loc[:, picked_countries]
+            else:
+                if picked_countries:
+                    print(df.columns)
+                    df = df.loc[:, df.columns.str.contains('|'.join(picked_countries))]
             # aggregated_df = aggregated_df.loc[:, ['States', 'Russia']]
             # Plot
-            self.plot(aggregated_df)
+            self.plot(df)
 
 
 

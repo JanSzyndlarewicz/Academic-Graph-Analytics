@@ -13,6 +13,7 @@ def paper_to_dict(paper):
     return {
         "DOI": paper.externalIds.get("DOI"),
         "citations": [citation.externalIds.get("DOI") for citation in paper.citations if citation.externalIds],
+        "authors": [{"authorId": author.authorId, "name": author.name} for author in paper.authors],
     }
 
 
@@ -37,8 +38,7 @@ def process_and_save_chunks(json_iterator, chunk_size, filename):
         if doi:
             chunk.append(doi)
             if len(chunk) == chunk_size:
-                papers_dict, not_found = fetch_papers_by_dois(chunk, fields=["citations.externalIds", "externalIds"])
-
+                papers_dict, not_found = fetch_papers_by_dois(chunk, fields=["citations.externalIds", "externalIds", "authors"])
                 append_to_json_lines(papers_dict, filename)
 
                 if not_found:
@@ -46,7 +46,7 @@ def process_and_save_chunks(json_iterator, chunk_size, filename):
 
                 chunk = []
     if chunk:
-        papers_dict, not_found = fetch_papers_by_dois(chunk, fields=["citations.externalIds", "externalIds"])
+        papers_dict, not_found = fetch_papers_by_dois(chunk, fields=["citations.externalIds", "externalIds", "authors"])
 
         append_to_json_lines(papers_dict, filename)
         if not_found:

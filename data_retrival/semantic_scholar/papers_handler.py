@@ -100,7 +100,7 @@ def process_and_save_chunks(json_iterator, chunk_size, filename):
                 chunk = []
     if chunk:
         papers_dict, not_found = fetch_papers_by_dois(
-            semantic_scholar_connector, chunk, fields=["citations.externalIds", "externalIds"]
+            semantic_scholar_connector, chunk, fields="citations.externalIds,externalIds"
         )
 
         append_to_json_lines(papers_dict, filename)

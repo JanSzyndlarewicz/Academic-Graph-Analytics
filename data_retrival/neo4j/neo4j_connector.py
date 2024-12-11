@@ -14,7 +14,6 @@ from config import (
     NEO4J_USER,
 )
 
-
 class Neo4JConnector(ABC):
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -27,38 +26,22 @@ class Neo4JConnector(ABC):
 
     def __del__(self):
         self.close()
-
+        
     def close(self):
         self.driver.close()
-
+        
     def log_rows(self, batch_len):
         self.total_processed += batch_len
         if self.total_processed % 1000 == 0:
             self.logger.info(f"Processed {self.total_processed} rows so far.")
-
+            
     def run_query(self, query, parameters={}):
         with self.driver.session() as session:
             with session.begin_transaction() as tx:
                 result = tx.run(query, parameters=parameters)
                 result = [record.data() for record in result]
                 return result
-
-    def get_unique_vals(self, type, property):
-        try:
-            result = self.run_query(
-                f"""MATCH (n:{type})
-    UNWIND n.{property} AS value
-    RETURN DISTINCT value"""
-            )
-        except Exception as e:
-            self.logger.error(f"Error getting unique values for {type}.{property}: {e}")
-            result = self.run_query(
-                f"""MATCH (n:{type})
-    WITH n.{property} AS value
-    RETURN DISTINCT value"""
-            )
-        return [record["value"] for record in result]
-
+            
     @staticmethod
     def run_query_static(query, parameters={}):
         driver = GraphDatabase.driver(
@@ -70,3 +53,5 @@ class Neo4JConnector(ABC):
                 result = [record.data() for record in result]
                 return result
         driver.close()
+
+        

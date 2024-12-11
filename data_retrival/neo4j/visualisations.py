@@ -134,7 +134,7 @@ def _plot_foreign_citation_to_paper_ratio_seperate(df):
         plt.savefig(f"plots/citation_to_paper_ratio/{country}_foreign_citations_to_papers_ratio.jpg")
         plt.clf()
 
-if __name__ == "__main__":
+def generate_data_and_visualisations():
     conn = Neo4JConnector()
 
     purge_countries(conn)

@@ -18,6 +18,7 @@ from data_retrival.utils import (
     load_dataset_mapping,
     save_citations_to_files,
 )
+from data_retrival.neo4j.visualisations import generate_data_and_visualisations
 
 
 ### --> In progress <-- ###
@@ -221,3 +222,5 @@ def node_pull():
 if __name__ == "__main__":
     # main()
     # node_pull()
+    # generate_data_and_visualisations()
+    pass

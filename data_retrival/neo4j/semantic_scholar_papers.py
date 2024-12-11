@@ -1,5 +1,6 @@
 from data_retrival.neo4j.core import AbstractNeo4jBatchProcessor
 
+
 class ScopusPapersBatchProcessor(AbstractNeo4jBatchProcessor):
 
     def process_batch(self, tx, batch):

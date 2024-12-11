@@ -21,6 +21,49 @@ from data_retrival.utils import (
 )
 
 
+def main():
+    """
+    Before running the script you may want to play with the values for the NEO4J_MAX_WORKERS in config.py.
+    The default value is 1, but you can increase it to speed up the process, it shouldnt be higher that
+    the number of threads your CPU can handle. There are some errors while making it in parallel, so you want
+    to make sure that the data is uploaded correctly to the neo4j database keeping the number of workers to 1.
+    The whole process of uploading the data to neo4j can take a few hours ~4 hours in one worker mode.
+    So just run it through the night and you should be fine.
+    In case of any errors there is one thing that can be done, and it will fix the problem. You just have to ...
+    """
+    """
+    FYI, I did all the graph processing un 12 workers and batch size of 10, and it took me around 10 minutes overall.
+    But before running the citations part I recommend to index the papers by DOI, it will speed up the process.
+    Just open Neo4j browser and run the following query: CREATE INDEX FOR (p:Paper) ON (p.id)
+    Once you will have some interesting queries you can place them in useful_neo4j_queries.txt.
+    """
+    # # old paths
+    # scopus_papers_dataset_path = "data/econ_data_top3/"
+    # scholar_citations_dataset_path = "data/scholar_citations/"
+    # unique_citations_path = "data/unique_citations/"
+
+    # Those links should fit the paths of the datasets taken from our google drive
+    scopus_papers_dataset_path = "data/data_top10/"
+    scholar_citations_dataset_path = "data/data_top10_citations/"
+    unique_citations_path = "data/data_top10_unique_citations/"
+
+    # Part to skip once you have the data from our google drive
+    download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path)
+    #
+    # Adding additional information to the papers
+    assign_fields_to_papers(scopus_papers_dataset_path)
+    #
+    # Uploading the papers to neo4j
+    upload_papers_to_neo4j(scopus_papers_dataset_path)
+    #
+    # Creating a file with unique citations that are only between papers in our dataset
+    # We dont want to have citations to papers that are not in our dataset
+    prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
+    #
+    # Uploading the unique citations to neo4j
+    upload_citations_to_neo4j(unique_citations_path)
+
+
 def download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path):
     dataset_paths = get_all_files_paths_recursively(scopus_papers_dataset_path)
 
@@ -159,49 +202,6 @@ def upload_citations_to_neo4j(citations_dataset_path):
         scholar_citations_batch_processor.process_file(path)
 
     scholar_citations_batch_processor.close()
-
-
-def main():
-    """
-    Before running the script you may want to play with the values for the NEO4J_MAX_WORKERS in config.py.
-    The default value is 1, but you can increase it to speed up the process, it shouldnt be higher that
-    the number of threads your CPU can handle. There are some errors while making it in parallel, so you want
-    to make sure that the data is uploaded correctly to the neo4j database keeping the number of workers to 1.
-    The whole process of uploading the data to neo4j can take a few hours ~4 hours in one worker mode.
-    So just run it through the night and you should be fine.
-    In case of any errors there is one thing that can be done, and it will fix the problem. You just have to ...
-    """
-    """
-    FYI, I did all the graph processing un 12 workers and batch size of 10, and it took me around 10 minutes overall.
-    But before running the citations part I recommend to index the papers by DOI, it will speed up the process.
-    Just open Neo4j browser and run the following query: CREATE INDEX FOR (p:Paper) ON (p.id)
-    Once you will have some interesting queries you can place them in useful_neo4j_queries.txt.
-    """
-    # # old paths
-    # scopus_papers_dataset_path = "data/econ_data_top3/"
-    # scholar_citations_dataset_path = "data/scholar_citations/"
-    # unique_citations_path = "data/unique_citations/"
-
-    # Those links should fit the paths of the datasets taken from our google drive
-    scopus_papers_dataset_path = "data/data_top10/"
-    scholar_citations_dataset_path = "data/data_top10_citations/"
-    unique_citations_path = "data/data_top10_unique_citations/"
-
-    # Part to skip once you have the data from our google drive
-    download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path)
-    #
-    # Adding additional information to the papers
-    assign_fields_to_papers(scopus_papers_dataset_path)
-    #
-    # Uploading the papers to neo4j
-    upload_papers_to_neo4j(scopus_papers_dataset_path)
-    #
-    # Creating a file with unique citations that are only between papers in our dataset
-    # We dont want to have citations to papers that are not in our dataset
-    prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
-    #
-    # Uploading the unique citations to neo4j
-    upload_citations_to_neo4j(unique_citations_path)
 
 
 if __name__ == "__main__":

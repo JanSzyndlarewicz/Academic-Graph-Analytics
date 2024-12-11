@@ -76,10 +76,8 @@ class AbstractNeo4jBatchProcessor(Neo4JConnector):
 
     def _split_batch_into_sub_batches(self, batch: list) -> list:
         sub_batch_size = max(1, len(batch) // self.max_workers)
-        return [batch[i: i + sub_batch_size] for i in range(0, len(batch), sub_batch_size)]
+        return [batch[i : i + sub_batch_size] for i in range(0, len(batch), sub_batch_size)]
 
     def _process_in_thread(self, sub_batch: list) -> None:
         with self.driver.session() as session:
             session.execute_write(self.process_batch, sub_batch)
-
-    

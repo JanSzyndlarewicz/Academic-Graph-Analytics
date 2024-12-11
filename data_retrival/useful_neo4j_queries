@@ -131,7 +131,7 @@ set e.normalized_weight = e.weight * 1.0 / outdegree
 
 -----------------------------------------------
 Get the fraction of internal citations for each country across the years
-match (n:Country_Y20)-[e]->(n) 
+match (n:Country_Y20)-[e]->(n)
 with n.name as country_name, e.normalized_weight as Y20
 match (n:Country_Y21 {name:country_name})-[e]->(n)
 with country_name, Y20, e.normalized_weight as Y21
@@ -146,7 +146,7 @@ with country_name, Y20, Y21, Y22, Y23, Y24, e.normalized_weight as Y25
 return country_name, Y20, Y21, Y22, Y23, Y24, Y25
 
 Get the fraction of citation to russia across the years
-match (n:Country_Y20)-[e]->(:Country_Y20{name:"Russia"}) 
+match (n:Country_Y20)-[e]->(:Country_Y20{name:"Russia"})
 with n.name as country_name, e.normalized_weight as Y20
 match (n:Country_Y21 {name:country_name})-[e]->(:Country_Y21{name:"Russia"})
 with country_name, Y20, e.normalized_weight as Y21
@@ -161,7 +161,7 @@ with country_name, Y20, Y21, Y22, Y23, Y24, e.normalized_weight as Y25
 return country_name, Y20, Y21, Y22, Y23, Y24, Y25
 
 Get the yearly percentage increase in the fraction of citations to russia across the years
-match (n:Country_Y20)-[e]->(:Country_Y20{name:"Russia"}) 
+match (n:Country_Y20)-[e]->(:Country_Y20{name:"Russia"})
 with n.name as country_name, e.normalized_weight as Y20
 match (n:Country_Y21 {name:country_name})-[e]->(:Country_Y21{name:"Russia"})
 with country_name, Y20, e.normalized_weight as Y21
@@ -176,7 +176,7 @@ with country_name, Y20, Y21, Y22, Y23, Y24, e.normalized_weight as Y25
 return country_name, (Y21 - Y20) * 100.0 / Y20 as D21, (Y22 - Y21) * 100.0 / Y21 as D22, (Y23 - Y22) * 100.0 / Y22 as D23, (Y24 - Y23) * 100.0 / Y23 as D24, (Y25 - Y24) * 100.0 / Y24 as D25
 
 Get the percentage increase from the beginning date in the fraction of citations to russia across the years
-match (n:Country_Y20)-[e]->(:Country_Y20{name:"Russia"}) 
+match (n:Country_Y20)-[e]->(:Country_Y20{name:"Russia"})
 with n.name as country_name, e.normalized_weight as Y20
 match (n:Country_Y21 {name:country_name})-[e]->(:Country_Y21{name:"Russia"})
 with country_name, Y20, e.normalized_weight as Y21
@@ -226,7 +226,6 @@ return n.name, year, e.normalized_weight
 
 -----------------------------------------------
 Get country connections between papers published in specific timespan
-
 MATCH (cited:Paper)-[:CITED_BY]->(base:Paper)
 WHERE DATE(base.publication_date) < DATE("2020-01-01") AND DATE(base.publication_date) > DATE("2019-01-01")
 WITH base.countries AS base_countries, cited.countries AS cited_countries
@@ -251,6 +250,22 @@ MERGE (cc:University_2019 {name: cited_university})
 MERGE (bc)-[r:UNIVERSITY_CITED_BY]->(cc)
 ON CREATE SET r.weight = 1
 ON MATCH SET r.weight = r.weight + 1
+
+
+-----------------------------------------------
+
+CREATE INDEX FOR (p:Paper_2010) ON (p.id);
+
+// Run the query
+MATCH (cited:Paper)-[orig:CITED_BY]->(base:Paper)
+WHERE DATE(base.publication_date) < DATE("2011-01-01")
+WITH cited, orig, base LIMIT 1000  // Process in batches
+MERGE (bc:Paper_2010 {id: base.id})
+SET bc.title = base.title, bc.publication_date = base.publication_date  // Copy only needed properties
+MERGE (cc:Paper_2010 {id: cited.id})
+SET cc.title = cited.title, cc.publication_date = cited.publication_date
+MERGE (cc)-[r:CITED_BY]->(bc)
+SET r.type = orig.type;  // Copy specific relationship properties
 
 -----------------------------------------------
 

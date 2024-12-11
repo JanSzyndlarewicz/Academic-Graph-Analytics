@@ -10,7 +10,6 @@ from data_retrival.neo4j.neo4j_connector import Neo4JConnector
 from data_retrival.neo4j.node_pull import PaperDataCollector, UniDataCollector
 from data_retrival.neo4j.scholar_citations import SemanticScholarCitationsBatchProcessor
 from data_retrival.neo4j.semantic_scholar_papers import ScopusPapersBatchProcessor
-from data_retrival.neo4j.visualisations import generate_data_and_visualisations
 from data_retrival.semantic_scholar.papers_handler import PapersScholarAPI, process_and_save_chunks
 from data_retrival.utils import (
     get_all_files_paths_recursively,

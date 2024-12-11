@@ -16,7 +16,5 @@
 /.vscode
 /data_old
 
-__pycache__/
-
-# Ignore all .pyc files
 *.pyc
+__pycache__/**

@@ -1,11 +1,16 @@
 import os
 import re
 
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
 from config import PAPERS_FIELDS_MAPPING
 from data_retrival.neo4j.neo4j_connector import Neo4JConnector
 from data_retrival.neo4j.node_pull import PaperDataCollector, UniDataCollector
 from data_retrival.neo4j.scholar_citations import SemanticScholarCitationsBatchProcessor
 from data_retrival.neo4j.semantic_scholar_papers import ScopusPapersBatchProcessor
+from data_retrival.neo4j.visualisations import generate_data_and_visualisations
 from data_retrival.semantic_scholar.papers_handler import PapersScholarAPI, process_and_save_chunks
 from data_retrival.utils import (
     get_all_files_paths_recursively,
@@ -173,6 +178,10 @@ def main():
     Just open Neo4j browser and run the following query: CREATE INDEX FOR (p:Paper) ON (p.id)
     Once you will have some interesting queries you can place them in useful_neo4j_queries.txt.
     """
+    # # old paths
+    # scopus_papers_dataset_path = "data/econ_data_top3/"
+    # scholar_citations_dataset_path = "data/scholar_citations/"
+    # unique_citations_path = "data/unique_citations/"
 
     # Those links should fit the paths of the datasets taken from our google drive
     scopus_papers_dataset_path = "data/data_top10/"
@@ -218,43 +227,17 @@ def make_statistics_for_papers_graph():
 
 
 def node_pull():
-    ### WARNING!!! ###
-    # Make sure to have the CITES relationship corrected #
+    from data_retrival.neo4j.node_pull import NodePull
 
-    # -------------------------------------------------- #
-    # WARNING: this will do it for you, but it will make any other graph than Paper based useless #
-    # Neo4JConnector.run_query_static("""
-    #                                 MATCH (start)-[rel]->(end)
-    #                                 WITH start, rel, end, type(rel) AS rel_type, rel.properties AS rel_props
-    #                                 CREATE (end)-[new_rel:CITES]->(start)
-    #                                 SET new_rel += CASE WHEN rel_props IS NOT NULL THEN rel_props ELSE {} END
-    #                                 DELETE rel
-    #                                 """)
+    node_pull = UniDataCollector("University", range=(2015, 2020), index_field="name", metric="score")
+    node_pull.make_temporary_analysis_subgraphs()
+    node_pull.make_df()
+    node_pull.visualise()
 
-    # -------------------------------------------------- #
+    # nodes = node_pull.get_nodes("University", limit=3000, index_field="name")
+    # node_pull.make_df(index_field="name")
 
-    node_pull = UniDataCollector("University", range=(1970, 2025), index_field="name", metric="score")
-    # Do in case of any errors, make sure to comment after
-    # node_pull.drop_temporary_graph(for_range=True)
-
-    # Creates the subgraphs in the neo4j database with country name and citations, best comment after first use
-    # node_pull.make_time_series_analysis_subgraphs()
-
-    # Creates the temporary graphs for the analysis, best comment after first use
-    node_pull.create_temporary_graph(for_range=True)
-
-    # Makes the time series analysis for the universities, assigns to self.df
-    node_pull.make_df(index_field="name")
-
-    # Makes the visualisation on previously created df
-    # node_pull.visualise_aggr_by_countries(picked_countries=[
-    #     "United States",
-    #     "China",
-    #     "Germany",
-    #     "United Kingdom",
-    #     "Russia",
-    #     "Canada"
-    #     ])
+    # print(nodes)
 
 
 # if __name__ == "__main__":

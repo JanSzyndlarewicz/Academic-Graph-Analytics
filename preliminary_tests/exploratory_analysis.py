@@ -1,5 +1,3 @@
-import json
-
 import jsonlines
 
 
@@ -18,7 +16,5 @@ def test_field_presence(fields, file_path):
 
 
 if __name__ == "__main__":
-
     fields = ["prism:doi", "prism:coverDate"]
-    # test_field_presence(fields, 'test_batch.jsonl')
     test_field_presence(fields, "60021331-econ-batch.jsonl")

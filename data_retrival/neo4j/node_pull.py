@@ -6,6 +6,7 @@ import pandas as pd
 from isort.core import process
 from matplotlib import pyplot as plt
 from numpy.f2py.auxfuncs import throw_error
+from sklearn.preprocessing import MinMaxScaler
 
 from data_retrival.neo4j.neo4j_connector import Neo4JConnector
 
@@ -377,6 +378,8 @@ class PaperDataCollector(Neo4JConnector):
 
                     if metric != picked_metric:
                         continue
+                    print(len(data))
+
                     print(label, metric, (data))
                     if isinstance(data[0][for_type], list):
                         values_occurrences = Counter([country for paper in data for country in paper[for_type]])
@@ -390,13 +393,23 @@ class PaperDataCollector(Neo4JConnector):
             if picked_cols:
                 print(df.columns)
                 df = df[picked_cols]
+            if not picked_cols or len(picked_cols) > 1:
+                scaler = MinMaxScaler()
+
+                scaled_values = scaler.fit_transform(df)
+
+                df = pd.DataFrame(scaled_values, columns=df.columns, index=df.index)
 
             os.makedirs(f"top_n/{picked_metric}/", exist_ok=True)
 
             df.to_csv(f"top_n/{picked_metric}/statistics_{label}_{picked_metric}_{for_type}.csv")
-
-            df.plot(kind="line", marker="o")
-            plt.title("Line Plot of Multiple Rows")
-            plt.xlabel("Index")
+            df.index = df.index.map(lambda x: x.split("_")[-1])
+            df.plot(kind="line")
+            plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
+            plt.tight_layout()
+            plt.gcf().set_size_inches(10, 7)
+            plt.title("occurrences of countries in top 1000 page rank for papers normalised")
+            plt.xlabel("Years")
             plt.ylabel("Values")
+            plt.savefig(f"statistics_{label}_{picked_metric}_{for_type}.png")
             plt.show()

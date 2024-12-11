@@ -6,7 +6,7 @@ from data_retrival.neo4j.neo4j_connector import Neo4JConnector
 from data_retrival.neo4j.node_pull import PaperDataCollector, UniDataCollector
 from data_retrival.neo4j.scholar_citations import SemanticScholarCitationsBatchProcessor
 from data_retrival.neo4j.semantic_scholar_papers import ScopusPapersBatchProcessor
-from data_retrival.semantic_scholar.papers_handler import process_and_save_chunks
+from data_retrival.semantic_scholar.papers_handler import PapersScholarAPI, process_and_save_chunks
 from data_retrival.utils import (
     get_all_files_paths_recursively,
     get_file_with_parent_folder,
@@ -15,9 +15,6 @@ from data_retrival.utils import (
     save_citations_to_files,
     save_to_json_lines,
 )
-
-### --> In progress <-- ###
-# Playground #
 
 
 def download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path):
@@ -183,76 +180,47 @@ def main():
     unique_citations_path = "data/data_top10_unique_citations/"
 
     # Part to skip once you have the data from our google drive
-    # download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path)
+    download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path)
     #
     # Adding additional information to the papers
-    # assign_fields_to_papers(scopus_papers_dataset_path)
+    assign_fields_to_papers(scopus_papers_dataset_path)
     #
     # Uploading the papers to neo4j
-    # upload_papers_to_neo4j(scopus_papers_dataset_path)
+    upload_papers_to_neo4j(scopus_papers_dataset_path)
     #
     # Creating a file with unique citations that are only between papers in our dataset
     # We dont want to have citations to papers that are not in our dataset
-    # prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
+    prepare_unique_citations_dataset(scopus_papers_dataset_path, scholar_citations_dataset_path, unique_citations_path)
     #
     # Uploading the unique citations to neo4j
-    # upload_citations_to_neo4j(unique_citations_path)
-
-
-def node_pull():
-    ### WARNING!!! ###
-    # Make sure to have the CITES relationship corrected #
-
-    # -------------------------------------------------- #
-    # WARNING: this will do it for you, but it will make any other graph than Paper based useless #
-    # Neo4JConnector.run_query_static("""
-    #                                 MATCH (start)-[rel]->(end)
-    #                                 WITH start, rel, end, type(rel) AS rel_type, rel.properties AS rel_props
-    #                                 CREATE (end)-[new_rel:CITES]->(start)
-    #                                 SET new_rel += CASE WHEN rel_props IS NOT NULL THEN rel_props ELSE {} END
-    #                                 DELETE rel
-    #                                 """)
-
-    # -------------------------------------------------- #
-
-    node_pull = UniDataCollector("University", range=(1970, 2025), index_field="name", metric="score")
-    # Do in case of any errors, make sure to comment after
-    # node_pull.drop_temporary_graph(for_range=True)
-
-    # Creates the subgraphs in the neo4j database with country name and citations, best comment after first use
-    # node_pull.make_time_series_analysis_subgraphs()
-
-    # Creates the temporary graphs for the analysis, best comment after first use
-    node_pull.create_temporary_graph(for_range=True)
-
-    # Makes the time series analysis for the universities, assigns to self.df
-    node_pull.make_df(index_field="name")
-
-    # Makes the visualisation on previously created df
-    # node_pull.visualise_aggr_by_countries(picked_countries=[
-    #     "United States",
-    #     "China",
-    #     "Germany",
-    #     "United Kingdom",
-    #     "Russia",
-    #     "Canada"
-    #     ])
+    upload_citations_to_neo4j(unique_citations_path)
 
 
 if __name__ == "__main__":
-    # main()
-    # node_pull()
-    papers_pull = PaperDataCollector(range=(2000, 2023))
+    main()
 
-    metrics = ["closeness_top", "degree_top", "pagerank_top", "articlerank_top", "louvain_top", "approxBetweenness_top"]
-    metrics = ["pagerank_top"]
-    fields = ["countries", "universities", "field"]
 
-    for metric in metrics:
-        for field in fields:
-            papers_pull.visualise(picked_metric=metric, for_type=field)
-    papers_pull.visualise(
-        # picked_metric="articlerank_top",
-        # picked_cols=[ "Russian Federation"],
-        # for_type="universities"
-    )
+# if __name__ == "__main__":
+#     main()
+#     # node_pull()
+#     papers_pull = PaperDataCollector(range=(2000, 2023))
+#
+#     metrics = ["closeness_top", "degree_top", "pagerank_top", "articlerank_top", "louvain_top", "approxBetweenness_top"]
+#     metrics = ["pagerank_top"]
+#     fields = ["countries", "universities", "field"]
+#     #
+#     # for metric in metrics:
+#     #     for field in fields:
+#     #         papers_pull.visualise(picked_metric=metric, for_type=field)
+#     papers_pull.visualise(
+#         # picked_metric="articlerank_top",
+#         # picked_cols=[
+#         #     "Russian Federation",
+#         #     "United States",
+#         #     "China",
+#         #     "Germany",
+#         #     "United Kingdom",
+#         #     "Poland",
+#         # ],
+#         # for_type="universities"
+#     )

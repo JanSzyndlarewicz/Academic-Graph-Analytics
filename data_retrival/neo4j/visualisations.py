@@ -1,18 +1,20 @@
 import os
 
-import pandas as pd
-
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 
 from data_retrival.neo4j.neo4j_connector import Neo4JConnector
+
 
 def purge_countries(conn):
     query = f"MATCH (n:Country) DETACH DELETE n"
     conn.run_query(query)
 
+
 def divide_into_year_buckets(conn, start, end):
-    _divide_into_year_buckets(conn, [str(x) for x in list(range(start,end))])
+    _divide_into_year_buckets(conn, [str(x) for x in list(range(start, end))])
+
 
 def _divide_into_year_buckets(conn, years):
     query = f"""with {years} as years
@@ -32,16 +34,18 @@ def _divide_into_year_buckets(conn, years):
             ON MATCH SET s.weight = s.weight + 1"""
     conn.run_query(query)
 
+
 def get_citation_fractions_years(conn, start, end):
     result = None
-    for year in [str(x) for x in list(range(start,end))]:
+    for year in [str(x) for x in list(range(start, end))]:
         if result is None:
             result = get_citation_fractions_year(conn, year)
         else:
             tmp = get_citation_fractions_year(conn, year)
-            result = pd.concat([result,tmp], ignore_index=True)
+            result = pd.concat([result, tmp], ignore_index=True)
     result = result.fillna(0)
     return result
+
 
 def get_citation_fractions_year(conn, year):
     query = f"""match (n:Country {{bucket:"{year}"}})<-[e:COUNTRY_CITED_BY]-(k:Country)
@@ -50,19 +54,21 @@ def get_citation_fractions_year(conn, year):
     result = pd.DataFrame(result)
     result["Year"] = result["Year"].astype("int32")
     sums = result.groupby(["Citing"])[["Count"]].sum()
-    result["Proportion"] = result.apply(lambda x : x["Count"] / sums.loc[x["Citing"]], axis=1)
+    result["Proportion"] = result.apply(lambda x: x["Count"] / sums.loc[x["Citing"]], axis=1)
     return result
+
 
 def get_foreign_citation_per_paper_ratio_years(conn, start, end):
     result = None
-    for year in [str(x) for x in list(range(start,end))]:
+    for year in [str(x) for x in list(range(start, end))]:
         if result is None:
             result = get_foreign_citation_per_paper_ratio_year(conn, year)
         else:
             tmp = get_foreign_citation_per_paper_ratio_year(conn, year)
-            result = pd.concat([result,tmp], ignore_index=True)
+            result = pd.concat([result, tmp], ignore_index=True)
     result = result.fillna(0)
     return result
+
 
 def get_foreign_citation_per_paper_ratio_year(conn, year):
     query = f"""match (n:Country {{bucket : "{year}"}})
@@ -77,6 +83,7 @@ def get_foreign_citation_per_paper_ratio_year(conn, year):
     result["Year"] = result["Year"].astype("int32")
     return result
 
+
 def plot_self_citation_fractions(df):
     _plot_self_citations_fractions_join(df)
     _plot_self_citations_fractions_seperate(df)
@@ -85,26 +92,29 @@ def plot_self_citation_fractions(df):
 def _plot_self_citations_fractions_join(df):
     data = df[(df["Citing"] == df["Cited"])]
     sns.lineplot(data, x="Year", y="Proportion", hue="Citing").set(title=f"Proportions of self-citations")
-    os.makedirs("plots/self_proportion",exist_ok=True)
+    os.makedirs("plots/self_proportion", exist_ok=True)
     plt.savefig(f"plots/self_proportion/self_proportions.jpg")
     plt.clf()
+
 
 def _plot_self_citations_fractions_seperate(df):
     for country in df["Citing"].unique():
         data = df[(df["Citing"] == country) & (df["Cited"] == country)]
         sns.lineplot(data, x="Year", y="Proportion").set(title=f"{country}-{country}")
-        os.makedirs("plots/self_proportion",exist_ok=True)
+        os.makedirs("plots/self_proportion", exist_ok=True)
         plt.savefig(f"plots/self_proportion/{country}_self_proportion.jpg")
         plt.clf()
+
 
 def plot_citation_fractions_to_country(df, country):
     _plot_citation_fractions_to_country_join(df, country)
     _plot_citation_fractions_to_country_seperate(df, country)
 
+
 def _plot_citation_fractions_to_country_join(df, country):
     data = df[(df["Cited"] == country) & (df["Citing"] != country)]
     sns.lineplot(data, x="Year", y="Proportion", hue="Citing").set(title=f"Proportions of citations to Russia")
-    os.makedirs("plots/russia_proportion",exist_ok=True)
+    os.makedirs("plots/russia_proportion", exist_ok=True)
     plt.savefig(f"plots/russia_proportion/russia_proportions.jpg")
     plt.clf()
 
@@ -116,31 +126,35 @@ def _plot_citation_fractions_to_country_seperate(df, target_country):
         plt.savefig(f"plots/russia_proportion/{country}_{target_country}_proportion.jpg")
         plt.clf()
 
+
 def plot_foreign_citation_to_paper_ratio(df):
     _plot_foreign_citation_to_paper_ratio_join(df)
     _plot_foreign_citation_to_paper_ratio_seperate(df)
 
+
 def _plot_foreign_citation_to_paper_ratio_join(df):
     sns.lineplot(df, x="Year", y="Ratio", hue="Country").set(title=f"Foreign citations to papers ratio.")
-    os.makedirs("plots/citation_to_paper_ratio",exist_ok=True)
+    os.makedirs("plots/citation_to_paper_ratio", exist_ok=True)
     plt.savefig(f"plots/citation_to_paper_ratio/foregin_citations_to_paper_ratios.jpg")
     plt.clf()
+
 
 def _plot_foreign_citation_to_paper_ratio_seperate(df):
     for country in df["Country"].unique():
         data = df[df["Country"] == country]
         sns.lineplot(data, x="Year", y="Ratio").set(title=f"{country} - foreing citations to papers ratio")
-        os.makedirs("plots/citation_to_paper_ratio",exist_ok=True)
+        os.makedirs("plots/citation_to_paper_ratio", exist_ok=True)
         plt.savefig(f"plots/citation_to_paper_ratio/{country}_foreign_citations_to_papers_ratio.jpg")
         plt.clf()
+
 
 def generate_data_and_visualisations():
     conn = Neo4JConnector()
 
     purge_countries(conn)
-    divide_into_year_buckets(conn, 2010,2025)
-    
-    df = (get_citation_fractions_years(conn,2010,2025))
+    divide_into_year_buckets(conn, 2010, 2025)
+
+    df = get_citation_fractions_years(conn, 2010, 2025)
     df.to_json("dataframe.json")
 
     plot_self_citation_fractions(df)

@@ -118,13 +118,12 @@ def _plot_citation_fractions_to_country_join(df, country):
     plt.savefig(f"plots/russia_proportion/russia_proportions.jpg")
     plt.clf()
 
-
-def _plot_citation_fractions_to_country_seperate(df, country):
+def _plot_citation_fractions_to_country_seperate(df, target_country):
     for country in df["Citing"].unique():
-        data = df[(df["Citing"] == country) & (df["Cited"] == "Russia")]
-        sns.lineplot(data, x="Year", y="Proportion").set(title=f"{country}-Russia")
-        os.makedirs("plots/russia_proportion", exist_ok=True)
-        plt.savefig(f"plots/russia_proportion/{country}_russia_proportion.jpg")
+        data = df[(df["Citing"] == country) & (df["Cited"] == target_country)]
+        sns.lineplot(data, x="Year", y="Proportion").set(title=f"{country}-{target_country}")
+        os.makedirs("plots/russia_proportion",exist_ok=True)
+        plt.savefig(f"plots/russia_proportion/{country}_{target_country}_proportion.jpg")
         plt.clf()
 
 

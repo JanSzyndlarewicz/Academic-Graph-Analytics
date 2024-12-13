@@ -10,7 +10,7 @@ from data_retrival.neo4j.neo4j_connector import Neo4JConnector
 from data_retrival.neo4j.node_pull import PaperDataCollector, UniDataCollector
 from data_retrival.neo4j.scholar_citations import SemanticScholarCitationsBatchProcessor
 from data_retrival.neo4j.semantic_scholar_papers import ScopusPapersBatchProcessor
-from data_retrival.semantic_scholar.papers_handler import PapersScholarAPI, process_and_save_chunks
+from data_retrival.semantic_scholar.papers_handler import PapersScholarScholarAPI, process_and_save_chunks
 from data_retrival.utils import (
     get_all_files_paths_recursively,
     get_file_with_parent_folder,
@@ -171,11 +171,7 @@ def load_citations_from_scholar(scholar_citations_dataset_paths, all_dois):
 def prepare_unique_citations_dataset(
     scopus_papers_dataset_path, scholar_citations_dataset_path, output_dir="data/unique_citations", chunk_size=10000
 ):
-    scopus_papers_dataset_paths = [
-        path
-        for path in get_all_files_paths_recursively(scopus_papers_dataset_path)
-        if not os.path.exists(path.replace(".jsonl", ".not_found.jsonl"))
-    ]
+    scopus_papers_dataset_paths = [path for path in get_all_files_paths_recursively(scopus_papers_dataset_path)]
 
     # Load DOIs from Scopus dataset
     all_dois = load_dois_from_scopus(scopus_papers_dataset_paths)

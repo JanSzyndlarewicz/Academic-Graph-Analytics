@@ -7,7 +7,7 @@ from pathlib import Path
 import jsonlines
 import requests
 
-from config import PAPER_SEARCH_URL, SAFETY_LIMIT, SCOPUS_KEY
+from preliminary_tests.config import PAPER_SEARCH_URL, SAFETY_LIMIT, SCOPUS_KEY
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

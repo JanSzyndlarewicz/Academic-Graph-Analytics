@@ -5,11 +5,11 @@ import requests
 from semanticscholar import SemanticScholar
 
 from config import SEMANTIC_SCHOLAR_API_KEY, SEMANTIC_SCHOLAR_PAPERS_BASE_URL
-from data_retrival.semantic_scholar.abstract import APIClient
+from data_retrival.semantic_scholar.abstract import ScholarAPIClient
 from data_retrival.utils import append_to_json_lines
 
 
-class PapersScholarAPI(APIClient):
+class PapersScholarScholarAPI(ScholarAPIClient):
     def __init__(self):
         super().__init__()
         self.base_url += SEMANTIC_SCHOLAR_PAPERS_BASE_URL
@@ -76,7 +76,7 @@ def fetch_papers_by_dois(semantic_scholar_connector, dois, fields):
 
 
 def process_and_save_chunks(json_iterator, chunk_size, filename):
-    semantic_scholar_connector = PapersScholarAPI()
+    semantic_scholar_connector = PapersScholarScholarAPI()
     chunk = []
     papers_not_found_path = filename.split(".")
     papers_not_found_path.insert(-1, "not_found")

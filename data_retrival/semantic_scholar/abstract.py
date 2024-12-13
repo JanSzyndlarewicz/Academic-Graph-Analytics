@@ -7,7 +7,7 @@ import requests
 from config import DATA_FOLDER_NAME, SEMANTIC_SCHOLAR_BASE_URL, SEMANTIC_SCHOLAR_HEADERS
 
 
-class APIClient:
+class ScholarAPIClient:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.base_url = SEMANTIC_SCHOLAR_BASE_URL

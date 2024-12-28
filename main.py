@@ -178,9 +178,9 @@ def main():
     """
 
     # Those links should fit the paths of the datasets taken from our google drive
-    scopus_papers_dataset_path = "data/data_top10/"
-    scholar_citations_dataset_path = "data/data_top10_citations/"
-    unique_citations_path = "data/data_top10_unique_citations/"
+    scopus_papers_dataset_path = "data/whole_pwr/"
+    scholar_citations_dataset_path = "data/whole_pwr_citations/"
+    unique_citations_path = "data/whole_pwr_unique_citations/"
 
     # Part to skip once you have the data from our google drive
     # download_citations(scholar_citations_dataset_path, scopus_papers_dataset_path)
@@ -199,7 +199,7 @@ def main():
     # upload_citations_to_neo4j(unique_citations_path)
 
 
-def node_pull():
+def make_statistics_on_unis():
     ### WARNING!!! ###
     # Make sure to have the CITES relationship corrected #
 
@@ -215,18 +215,18 @@ def node_pull():
 
     # -------------------------------------------------- #
 
-    node_pull = UniDataCollector("University", range=(1970, 2025), index_field="name", metric="score")
+    node_pull = UniDataCollector(range=(1980, 2009), index_field="name", metric="score")
     # Do in case of any errors, make sure to comment after
     # node_pull.drop_temporary_graph(for_range=True)
 
     # Creates the subgraphs in the neo4j database with country name and citations, best comment after first use
-    # node_pull.make_time_series_analysis_subgraphs()
+    node_pull.make_time_series_analysis_subgraphs()
 
     # Creates the temporary graphs for the analysis, best comment after first use
-    node_pull.create_temporary_graph(for_range=True)
+    # node_pull.create_temporary_graph(for_range=True)
 
     # Makes the time series analysis for the universities, assigns to self.df
-    node_pull.make_df(index_field="name")
+    # node_pull.make_df(index_field="name")
 
     # Makes the visualisation on previously created df
     # node_pull.visualise_aggr_by_countries(picked_countries=[
@@ -244,17 +244,17 @@ def make_statistics_for_papers_graph():
     metrics = ["closeness_top", "degree_top", "pagerank_top", "articlerank_top", "louvain_top", "approxBetweenness_top"]
     metrics = ["pagerank_top"]
     fields = ["countries", "universities", "field"]
-
-    for metric in metrics:
-        for field in fields:
-            papers_pull.visualise(picked_metric=metric, for_type=field)
+    papers_pull.pull()
+    # for metric in metrics:
+    #     for field in fields:
+    #         papers_pull.visualise(picked_metric=metric, for_type=field)
     papers_pull.visualise(
         # picked_metric="articlerank_top",
-        # picked_cols=[ "Russian Federation"],
+        picked_cols=[ "Russian Federation"],
         # for_type="universities"
     )
 
 if __name__ == "__main__":
-    # main()
-    # node_pull()
-    
+    main()
+    # make_statistics_on_unis()
+    # make_statistics_for_papers_graph()

@@ -3,139 +3,31 @@ import os.path
 from collections import Counter
 
 import pandas as pd
-from isort.core import process
 from matplotlib import pyplot as plt
 from numpy.f2py.auxfuncs import throw_error
 
 from data_retrival.neo4j.neo4j_connector import Neo4JConnector
+from global_constants import GlobalConstants
 
 
-econ_uni2country = {
-    "Harvard University": "United States",
-    "Stanford University": "United States",
-    "The University of Chicago": "United States",
-    "University of Oxford": "United Kingdom",
-    "University of Cambridge": "United Kingdom",
-    "Imperial College London": "United Kingdom",
-    "Technische Universität München": "Germany",
-    "Universität Heidelberg": "Germany",
-    "Humboldt-Universität zu Berlin": "Germany",
-    "Sorbonne Université": "France",
-    "École Normale Supérieure": "France",
-    "École Polytechnique Fédérale de Lausanne": "France",
-    "Tsinghua University": "China",
-    "Peking University": "China",
-    "Fudan University": "China",
-    "University of Toronto": "Canada",
-    "Université McGill": "Canada",
-    "The University of British Columbia": "Canada",
-    "The University of Tokyo": "Japan",
-    "Kyoto University": "Japan",
-    "Osaka University": "Japan",
-    "The Australian National University": "Australia",
-    "University of Melbourne": "Australia",
-    "The University of Sydney": "Australia",
-    "ETH Zürich": "Switzerland",
-    "Universität Zürich": "Switzerland",
-    "Université de Genève": "Switzerland",
-    "Universiteit van Amsterdam": "Netherlands",
-    "Delft University of Technology": "Netherlands",
-    "Universiteit Leiden": "Netherlands",
-    "Karolinska Institutet": "Sweden",
-    "Lunds Universitet": "Sweden",
-    "Stockholms universitet": "Sweden",
-    "Seoul National University": "South Korea",
-    "Yonsei University": "South Korea",
-    "Sungkyunkwan University": "South Korea",
-    "Helsingin Yliopisto": "Finland",
-    "Aalto University": "Finland",
-    "Turun yliopisto": "Finland",
-    "National University of Singapore": "Singapore",
-    "Nanyang Technological University": "Singapore",
-    "Singapore Management University": "Singapore",
-    "Københavns Universitet": "Denmark",
-    "Aarhus Universitet": "Denmark",
-    "Technical University of Denmark": "Denmark",
-    "KU Leuven": "Belgium",
-    "Universiteit Gent": "Belgium",
-    "Université de Liège": "Belgium",
-    "Hebrew University of Jerusalem": "Israel",
-    "Weizmann Institute of Science Israel": "Israel",
-    "Tel Aviv University": "Israel",
-    "Weizmann Institute of Science": "Israel",
-    "Indian Institute of Science": "India",
-    "University of Delhi": "India",
-    "Jawaharlal Nehru University": "India",
-    "Alma Mater Studiorum Università di Bologna": "Italy",
-    "Sapienza Università di Roma": "Italy",
-    "Politecnico di Milano": "Italy",
-    "Universitat de Barcelona": "Spain",
-    "Universidad Autónoma de Madrid": "Spain",
-    "Universidad Complutense de Madrid": "Spain",
-    "Lomonosov Moscow State University": "Russia",
-    "Saint Petersburg State University": "Russia",
-    "Novosibirsk State University": "Russia",
-    "University of Warsaw": "Poland",
-    "Uniwersytet Jagielloński": "Poland",
-    "Politechnika Warszawska": "Poland"
-}
-
-
-class NodePull(Neo4JConnector):
-    def __init__(self, type):
-        super().__init__()
+class DataCollector:
+    def __init__(self, range, type):
+        self.connector = Neo4JConnector()
+        self.range: tuple[int, int] = range
         self.type = type
 
-    def get_nodes(self, type=None, limit=3000):
-        if not type:
-            type = self.type
-        query = f"MATCH (n:{type}) RETURN n LIMIT {limit}"
-        print(self.count_nodes(type))
-        with self.driver.session() as session:
-            with session.begin_transaction() as tx:
-                result = tx.run(query)
-                result = [record.data()["n"] for record in result]
-                return result
-
-    def count_nodes(self, type, condition=None):
-        if condition:
-            query = f"MATCH (n:{type}) WHERE {condition} RETURN COUNT(n) AS node_count"
-        else:
-            query = f"MATCH (n:{type}) RETURN COUNT(n) AS node_count"
-        with self.driver.session() as session:
-            with session.begin_transaction() as tx:
-                result = tx.run(query)
-                result = result.single().data()["node_count"]
-                return result
-
-    def fetch_in_batches(self, query, batch_size):
-        offset = 0
-        all_results = []
-
-        while True:
-            batch_query = f"{query} SKIP {offset} LIMIT {batch_size}"
-            with self.driver.session() as session:
-                with session.begin_transaction() as tx:
-                    result = tx.run(batch_query)
-                    batch = [record["n"] for record in result]
-                    if not batch:
-                        break
-                    all_results.extend(batch)
-            offset += batch_size
-
-        return all_results
 
 
-class UniDataCollector:
-    def __init__(self, type, range, index_field, metric):
-        self.node_pull = NodePull(type)
-        self.range: tuple[int, int] = range
+class UniDataCollector(DataCollector):
+    def __init__(self, range, index_field, metric):
+        super().__init__(range, "University")
         self.metric = metric
         self.index_field = index_field
+        
 
     def make_time_series_analysis_subgraphs(self, field_filter=None):
         for i in range(self.range[0], self.range[1] + 1):
-            self.node_pull.run_query(
+            self.connector.run_query(
                 f"""
                 MATCH (n:University_{str(i)}) DETACH DELETE n"""
             )
@@ -143,7 +35,7 @@ class UniDataCollector:
 
         for i in range(self.range[0], self.range[1] + 1):
             if field_filter is None:
-                self.node_pull.run_query(
+                self.connector.run_query(
                     f"""
                 MATCH (base:Paper)-[:CITES]->(cited:Paper)
                 WHERE DATE(base.publication_date) < DATE("{str(i+1)}-01-01") AND DATE(base.publication_date) >= DATE("{str(i)}-01-01")
@@ -159,7 +51,7 @@ class UniDataCollector:
                 """
                 )
             else:
-                self.node_pull.run_query(
+                self.connector.run_query(
                     f"""
                 MATCH (base:Paper)-[:CITES]->(cited:Paper)
                 WHERE DATE(base.publication_date) < DATE("{str(i+1)}-01-01") AND DATE(base.publication_date) >= DATE("{str(i)}-01-01")
@@ -175,7 +67,8 @@ class UniDataCollector:
                 ON MATCH SET r.weight = r.weight + 1
                 """
                 )
-            for uni, country in econ_uni2country.items():
+            
+            for uni, country in GlobalConstants.econ_uni2country.items():
                 r = self.node_pull.run_query(
                     f"""
                     MATCH (n:University_{str(i)})
@@ -183,9 +76,8 @@ class UniDataCollector:
                     SET n.countries = ["{country}"]
             """)
 
-    def drop_temporary_graph(self, type=None):
-        if not type:
-            type = self.node_pull.type
+    def drop_temporary_graph(self):
+        type = self.type
     
         for i in range(self.range[0], self.range[1] + 1):
             query_drop_graph = f"""
@@ -197,9 +89,8 @@ class UniDataCollector:
                 print(f"Error dropping graph for type {type}_{i}: {e}")
 
             
-    def create_temporary_graph(self, type=None):
-        if not type:
-            type = self.node_pull.type
+    def create_temporary_graph(self):
+        type = self.type
 
         for i in range(self.range[0], self.range[1] + 1):
             query = f"""
@@ -217,9 +108,8 @@ class UniDataCollector:
         
             
             
-    def get_page_rank_from_temp_graphs(self, type=None):
-        if type is None:
-            type = self.node_pull.type
+    def get_page_rank_from_temp_graphs(self):
+        type = self.type
 
         query = f"""
         CALL gds.pageRank.stream('myGraph{str(type)}', {{
@@ -234,7 +124,7 @@ class UniDataCollector:
         
         
         """
-        result = self.node_pull.run_query(query=query)
+        result = self.connector.run_query(query=query)
         return result
 
     def make_df(self, index_field=None):
@@ -270,12 +160,11 @@ class UniDataCollector:
     def visualise(self, df=None):
         if df is None:
             df = self.df
-        # Transpose the DataFrame to make years the index
+
         df = df.T
-        df.index.name = "Year"  # Rename the index to 'Year'
+        df.index.name = "Year"  
         # df = df[-16:]
-        # Bucket the years into decades using integer division
-        # Define the bins and labels correctly
+
         bucket_size = 2
         upper_bound = df.index.max()
         lower_bound = df.index.min()
@@ -285,7 +174,7 @@ class UniDataCollector:
 
         labels = [i for i in range(lower_bound, upper_bound, bucket_size)]  # Labels for the bins
         labels = labels[:-1]
-        # Ensure the number of labels is one less than the number of bins
+
         # df['decade'] = pd.cut(df.index, bins=bins, labels=labels, right=False)
 
         # # Group by decade and aggregate (e.g., sum the values)
@@ -303,37 +192,36 @@ class UniDataCollector:
 
         last_part = [col.split(" ")[-1] for col in df.columns]
 
-        # Aggregate columns based on the last word of their names
-        # Group the columns based on the last part of the column names
+     
         grouped_data = {}
         for i, part in enumerate(last_part):
             if part not in grouped_data:
                 grouped_data[part] = []
             grouped_data[part].append(df.iloc[:, i])
 
-        # Sum the columns in each group (you can use other aggregation methods)
+     
         aggregated_df = {}
         for part, columns in grouped_data.items():
             aggregated_df[part] = pd.concat(columns, axis=1).sum(axis=1)
 
-        # Convert to DataFrame
+     
         aggregated_df = pd.DataFrame(aggregated_df)
         aggregated_df = aggregated_df.loc[:, ["States", "Russia"]]
-        # Plot
+
         aggregated_df.plot(figsize=(10, 6))
         plt.title("Metrics Over Years")
         plt.xlabel("Year")
         plt.ylabel("Metric")
-        plt.legend(title="Universities", bbox_to_anchor=(1.05, 1), loc="upper left")  # Move legend outside plot
+        plt.legend(title="Universities", bbox_to_anchor=(1.05, 1), loc="upper left") 
         plt.grid()
         plt.show()
 
     def visualise_aggr_by_countries(self, df=None, bucketed=False, bucket_size=2, picked_countries=None, aggregated_for_countries=None):
         if df is None:
             df = self.df
-        # Transpose the DataFrame to make years the index
+       
         df = df.T
-        df.index.name = "Year"  # Rename the index to 'Year'
+        df.index.name = "Year" 
         # df = df[-16:]
 
         if bucketed:
@@ -341,35 +229,33 @@ class UniDataCollector:
             lower_bound = df.index.min()
             if upper_bound < lower_bound:
                 upper_bound, lower_bound = lower_bound, upper_bound
-            bins = range(lower_bound, upper_bound, bucket_size)  # Bin edges
+            bins = range(lower_bound, upper_bound, bucket_size) 
 
-            labels = [i for i in range(lower_bound, upper_bound, bucket_size)]  # Labels for the bins
+            labels = [i for i in range(lower_bound, upper_bound, bucket_size)] 
             labels = labels[:-1]
-            # Ensure the number of labels is one less than the number of bins
+            
             df["decade"] = pd.cut(df.index, bins=bins, labels=labels, right=False)
 
-            # Group by decade and aggregate (e.g., sum the values)
             aggregated_df = df.groupby("decade").sum()
 
-            # Set the 'decade' as the new index
             aggregated_df = aggregated_df.reset_index().set_index('decade')
                 
             if aggregated_for_countries:
                 country_name = [col.split(' IN ')[-1] for col in df.columns]
 
-                # Aggregate columns based on the last part of their names
+       
                 grouped_data = {}
                 for i, part in enumerate(country_name):
                     if part not in grouped_data:
                         grouped_data[part] = []
                     grouped_data[part].append(df.iloc[:, i])
 
-                # Sum the columns in each group (you can use other aggregation methods)
+     
                 aggregated_df = {}
                 for part, columns in grouped_data.items():
                     aggregated_df[part] = pd.concat(columns, axis=1).sum(axis=1)
 
-                # Convert to DataFrame
+         
                 df = pd.DataFrame(aggregated_df)
                 if picked_countries:
                     df = df.loc[:, picked_countries]
@@ -378,7 +264,6 @@ class UniDataCollector:
                     print(df.columns)
                     df = df.loc[:, df.columns.str.contains('|'.join(picked_countries))]
             # aggregated_df = aggregated_df.loc[:, ['States', 'Russia']]
-            # Plot
             self.plot(df)
 
     def plot(self, df=None):
@@ -388,21 +273,20 @@ class UniDataCollector:
         plt.title("Page Rank Over Years")
         plt.xlabel("Year")
         plt.ylabel("Metric")
-        plt.legend(title="Universities", bbox_to_anchor=(1.05, 1), loc="upper left")  # Move legend outside plot
+        plt.legend(title="Universities", bbox_to_anchor=(1.05, 1), loc="upper left") 
         plt.grid()
         plt.show()
 
 
-class PaperDataCollector(Neo4JConnector):
+class PaperDataCollector(DataCollector):
     def __init__(self, range):
-        super().__init__()
-        self.range: tuple[int, int] = range
+        super().__init__(range, "Paper")
+
 
     def pull(self, limit=100):
-
         queried_fields = ["closeness", "degree", "pagerank", "articlerank", "louvain", "approxBetweenness"]
-
-        with self.driver.session() as session:
+        queried_fields = ["pagerank"]
+        with self.connector.driver.session() as session:
             with session.begin_transaction() as tx:
                 for i in range(self.range[0], self.range[1] + 1):
                     for field in queried_fields:
@@ -420,8 +304,7 @@ class PaperDataCollector(Neo4JConnector):
                         self.process(fetched_results, field, f"Paper_{str(i)}")
 
     def process(self, result, metric, label):
-
-        ex = """
+        """example of result:
         {'articlerank': 0.2233492857159228,
          'louvain': 43430, 'approxBetweenness': 0.0,
         'universities': ['University College London'], 
@@ -445,7 +328,7 @@ class PaperDataCollector(Neo4JConnector):
             file.truncate()
 
     def visualise(self, picked_cols=None, picked_metric="pagerank_top", for_type="countries"):
-        labels = self.get_unique_vals("Paper", for_type)
+        labels = self.connector.get_unique_vals("Paper", for_type)
         df = pd.DataFrame(columns=labels)
 
         with open("statistics.json", "r", encoding="utf-8") as file:
@@ -469,9 +352,8 @@ class PaperDataCollector(Neo4JConnector):
                 print(df.columns)
                 df = df[picked_cols]
 
-            os.makedirs(f"top_n/{picked_metric}/", exist_ok=True)
-
-            df.to_csv(f"top_n/{picked_metric}/statistics_{label}_{picked_metric}_{for_type}.csv")
+            # os.makedirs(f"top_n/{picked_metric}/", exist_ok=True)
+            # df.to_csv(f"top_n/{picked_metric}/statistics_{label}_{picked_metric}_{for_type}.csv")
 
             df.plot(kind="line", marker="o")
             plt.title("Line Plot of Multiple Rows")

@@ -101,9 +101,9 @@ def save_all_entries(output_path, **params):
         # this is just because I am paranoid that I will accidentally create an infite loop and burn all my requests
         # set SAFETY_LIMIT to whatever you feel is reasonable or just get rid of this clause if you know what you are doing
         i += 1
-        if i >= SAFETY_LIMIT:
-            logger.warning(f"Safety limit reached, query series aborted.")
-            return
+        # if i >= SAFETY_LIMIT:
+        #     logger.warning(f"Safety limit reached, query series aborted.")
+        #     return
         
 def save_by_institutions_and_fields(institutions : list[str], fields : list[str], apiKey : str, country_mapping : dict[str,str] = None, institution_names : list[str] = None):
     
@@ -118,14 +118,23 @@ def save_by_institutions_and_fields(institutions : list[str], fields : list[str]
             dir_path = dir_path / country_mapping.get(id, "unknown")
         if not dir_path.exists():
             dir_path.mkdir()
-        for field in fields:           
-            output_path = dir_path / f"{id}-{field}.jsonl"
+        if not fields:
+            output_path = dir_path / f"{id}-{name}.jsonl"
             if not output_path.exists():
-                logger.info(f"Beginning data collection for institution {name} and field {field}, output file: {output_path}")
+                logger.info(f"Beginning data collection for institution {name}for all fields, output file: {output_path}")
                 query = f"af-id({id})"
-                save_all_entries(output_path, query=query, subj=field, apiKey=apiKey)
+                save_all_entries(output_path, query=query, apiKey=apiKey)
             else:
                 logger.info(f"Data for institution {name} and field {field}, output file: {output_path} already exists; skipping")
+        else: 
+            for field in fields:           
+                output_path = dir_path / f"{id}-{field}.jsonl"
+                if not output_path.exists():
+                    logger.info(f"Beginning data collection for institution {name} and field {field}, output file: {output_path}")
+                    query = f"af-id({id})"
+                    save_all_entries(output_path, query=query, subj=field, apiKey=apiKey)
+                else:
+                    logger.info(f"Data for institution {name} and field {field}, output file: {output_path} already exists; skipping")
 
 
 def read_unis_file_group_by_countries(path, n=None) -> dict:
@@ -195,11 +204,15 @@ def exclude_countries(country_uni_dict : dict, countries_to_exclude : list[str])
 if __name__ == "__main__":
 
 
-    fields = ["econ"]
-    unis = read_unis_file_group_by_countries("preliminary_tests/best_affils_for_top_unis_01-17-42_transformed.json", n=3)
-    institutions, names, mapping = process_entries(unis)
+    # fields = ["econ"]
+    # unis = read_unis_file_group_by_countries("preliminary_tests/data/best_affils_for_top_unis_01-17-42_transformed.json", n=3)
+    # institutions, names, mapping = process_entries(unis)
+    
+    mapping={"60019987":  "Wroclaw University of Science and Technology"}
+    institutions = ["60019987"]
+    names = ["Wroclaw University of Science and Technology"]
 
-    save_by_institutions_and_fields(institutions, fields , SCOPUS_KEY, country_mapping=mapping, institution_names=names)
+    save_by_institutions_and_fields(institutions, [], SCOPUS_KEY, country_mapping=mapping, institution_names=names)
 
     # number_of_records_file_path = Path(__file__).parent / "data" / "test_report.txt"
     # generate_numbers_of_records_report(number_of_records_file_path, institutions, fields, names)

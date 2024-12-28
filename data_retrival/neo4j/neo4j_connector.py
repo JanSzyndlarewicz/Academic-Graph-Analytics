@@ -53,5 +53,29 @@ class Neo4JConnector(ABC):
                 result = [record.data() for record in result]
                 return result
         driver.close()
+        
+    def count_nodes(self, type, condition=None):
+        if condition:
+            query = f"MATCH (n:{type}) WHERE {condition} RETURN COUNT(n) AS node_count"
+        else:
+            query = f"MATCH (n:{type}) RETURN COUNT(n) AS node_count"
+        with self.driver.session() as session:
+            with session.begin_transaction() as tx:
+                result = tx.run(query)
+                result = result.single().data()["node_count"]
+                return result
 
+    def get_unique_vals(self, type, attr):
+        query = f"MATCH (n:{type}) RETURN DISTINCT n.{attr} AS {attr}"
+        with self.driver.session() as session:
+            with session.begin_transaction() as tx:
+                try:
+                    result = tx.run(query)
+                except Exception as e:
+                    query = f"MATCH (n:{type}) UNWIND n.{attr} AS {attr} RETURN DISTINCT {attr} AS {attr}"
+                    self.logger.error(f"Failed to run query: {e}")
+                    raise
+                
+                result = [record.data()[attr] for record in result]
+                return result
         
